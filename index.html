@@ -54,7 +54,11 @@ button.sm{height:30px;padding:0 10px;font-size:12px}
 dialog{border-radius:16px;padding:16px}
 .ch{height:auto;min-height:44px;padding:10px 12px;border-radius:8px}
 .empty{padding:32px 12px}
-.stage{margin:0 -16px;padding:0 16px 16px;min-height:60vh}
+.stage{margin:0 -16px;padding:0 16px 16px;min-height:60vh;position:relative;isolation:isolate}
+.bgi{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none}
+.bgi[data-sumber=placeholder]{object-fit:none}
+.stage.gb .card{background:color-mix(in srgb,var(--card) 86%,transparent)}
+.stage.gb::after{content:"";position:absolute;inset:0;background:var(--bg);opacity:.45;z-index:-1;pointer-events:none}
 @keyframes fin{from{opacity:0}to{opacity:1}}
 .mt{font-size:12px;color:var(--t2);white-space:nowrap}
 .toast{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--t);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13px;max-width:90%;z-index:50}
@@ -1169,7 +1173,7 @@ return rpgDasar;
 </script>
 <!-- PLAYER-BEGIN -->
 <script>
-let eng=null;
+let eng=null,kaitScene=null; /* kait perpindahan scene: diisi editor (lihat blok Aset), kosong di ekspor */
 const NUM=/^-?\d+(\.\d+)?$/;
 function parseNilai(t,known){t=String(t??'').trim();
   if(!t)throw new Error('Nilai kosong. Tulis angka, ya/tidak, acak(1, 6), atau "teks"');
@@ -1367,7 +1371,20 @@ function slotDlg(s,mode){
   const rows=listSlots(s.id).map(x=>kartu(x.slot,x.rec,'Slot '+x.slot)).join('')+(sv?'':kartu('auto',bacaRec(s.id,'auto'),'Otomatis'));
   dlg(`<h2>${sv?'Simpan permainan':'Muat permainan'}</h2><p class="sub">${sv?'Pilih slot. Slot yang sudah terisi akan menanyakan konfirmasi sebelum ditimpa.':'Pilih simpanan yang ingin dimuat. Riwayat tombol Kembali dikosongkan.'}</p>${rows}<div class="row" style="justify-content:flex-end"><button data-a="dx">Tutup</button></div>`,null);
 }
-function vPlay(s){const o=vPlay0(s);return `<div class="stage" style="${stageCss()}">${o}</div>`}
+/* Gambar latar bagian aktif (passage.gambar = id aset). Dibaca SETELAH vPlay0 (jalankanJs bisa memindah scene).
+   Editor (kaitScene terisi): src diisi sesudah render oleh pasangGambar lewat resolveAset. Ekspor: src dari s.aset[id].data (data URI gambar). */
+const DATA_GAMBAR=/^data:image\/(?:png|jpeg|webp|gif|avif);base64,[A-Za-z0-9+\/=]+$/;
+function latarGambar(s){
+  try{
+    if(!eng||!eng.inti||eng.err.length||eng.banner)return '';
+    const p=P(s,eng.inti.tampilan().scene),g=p&&typeof p.gambar==='string'?p.gambar:'';
+    if(!g)return '';
+    let src='';
+    if(!kaitScene){const a=s.aset&&Object.prototype.hasOwnProperty.call(s.aset,g)?s.aset[g]:null,d=a&&typeof a.data==='string'?a.data:'';if(!DATA_GAMBAR.test(d))return '';src=` src="${d}"`}
+    return `<img class="bgi" alt="" data-gambar="${esc(g)}"${src}>`;
+  }catch(e){return ''}
+}
+function vPlay(s){if(kaitScene)kaitScene(eng);const o=vPlay0(s),g=latarGambar(s);return `<div class="stage${g?' gb':''}" style="${stageCss()}">${g}${o}</div>`}
 function vPlay0(s){
   const h0=ok=>`<div class="row sp">${head('Main',esc(s.title))}<div class="row">${ok?'<button data-a="sv">Simpan</button><button data-a="ld">Muat</button>':''}<button data-a="rs">Mulai ulang</button></div></div>`,h=h0(false);
   if(!s.passages.length)return h+empty('Cerita masih kosong','Tulis bagian di tab Editor.');
@@ -1441,13 +1458,362 @@ function aksiPlay(a,id,el){
 <!-- EDITOR-ONLY: DEMO + seluruh UI editor -->
 <script>
 const DEMO="{\n \"version\": \"1.2\",\n \"title\": \"Misteri Rumah Tua (contoh semua tingkat)\",\n \"description\": \"Contoh tingkat 1 sampai 4. Skrip di tab Kode tersambung otomatis ke bagian yang judulnya sama. Coba buat bagian bernama \\\"Kamar Rahasia\\\".\",\n \"author\": \"Contoh\",\n \"awal\": \"emas = 5\\nnyawa = 5\\nserang = 4\\nhadiah = 0\\nkoin_taman = 0\\nnama = \\\"Rani\\\"\\ninventaris = daftar roti\\nmusuh.nama = \\\"Hantu Penjaga\\\"\\nmusuh.nyawa = 12\\nboneka.nama = \\\"Jerami\\\"\\nboneka.nyawa = 30\",\n \"chapters\": [\n  {\n   \"id\": \"c1\",\n   \"title\": \"Bab 1: Di Luar\"\n  },\n  {\n   \"id\": \"c2\",\n   \"title\": \"Bab 2: Di Dalam\"\n  },\n  {\n   \"id\": \"c3\",\n   \"title\": \"Bab 3: Tingkat Lanjut\"\n  }\n ],\n \"passages\": [\n  {\n   \"id\": \"p1\",\n   \"title\": \"Gerbang\",\n   \"chapter\": \"c1\",\n   \"x\": 40,\n   \"y\": 40,\n   \"content\": \"Halo {nama}! Kamu berdiri di depan rumah tua.\\n\\nTas: {inventaris}.\",\n   \"choices\": [\n    {\n     \"text\": \"Pungut koin di tanah\",\n     \"to\": null,\n     \"syarat\": \"\",\n     \"efek\": \"emas + 3\",\n     \"id\": \"p1_0\"\n    },\n    {\n     \"text\": \"Ke taman\",\n     \"to\": \"p2\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p1_1\"\n    },\n    {\n     \"text\": \"Beli kunci tua (5 emas)\",\n     \"to\": null,\n     \"syarat\": \"emas >= 5 dan bukan punya kunci\",\n     \"efek\": \"emas - 5; ambil kunci\",\n     \"id\": \"p1_2\"\n    },\n    {\n     \"text\": \"Buka pintu depan\",\n     \"to\": \"p4\",\n     \"syarat\": \"punya kunci\",\n     \"efek\": \"\",\n     \"id\": \"p1_3\"\n    }\n   ],\n   \"start\": true\n  },\n  {\n   \"id\": \"p2\",\n   \"title\": \"Taman\",\n   \"chapter\": \"c1\",\n   \"x\": 260,\n   \"y\": 40,\n   \"content\": \"Taman yang sepi. Ada pohon apel di sudut.\",\n   \"choices\": [\n    {\n     \"text\": \"Kembali ke gerbang\",\n     \"to\": \"p1\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p2_0\"\n    },\n    {\n     \"text\": \"Petik apel\",\n     \"to\": null,\n     \"syarat\": \"bukan punya apel\",\n     \"efek\": \"ambil apel\",\n     \"id\": \"p2_1\"\n    },\n    {\n     \"text\": \"Makan apel\",\n     \"to\": null,\n     \"syarat\": \"punya apel\",\n     \"efek\": \"buang apel; nyawa + 1\",\n     \"id\": \"p2_2\"\n    },\n    {\n     \"text\": \"Masuk ke gubuk tua\",\n     \"to\": \"p3\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p2_3\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p3\",\n   \"title\": \"Gubuk Tua\",\n   \"chapter\": \"c1\",\n   \"x\": 480,\n   \"y\": 40,\n   \"content\": \"Atap gubuk runtuh dan melukaimu. Nyawa tersisa: {nyawa}.\",\n   \"choices\": [\n    {\n     \"text\": \"Kembali ke taman\",\n     \"to\": \"p2\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p3_0\"\n    },\n    {\n     \"text\": \"Periksa sudut ruangan\",\n     \"to\": null,\n     \"syarat\": \"nyawa >= 2 dan bukan punya lampu\",\n     \"efek\": \"ambil lampu\",\n     \"id\": \"p3_1\"\n    },\n    {\n     \"text\": \"Injak papan yang lapuk\",\n     \"to\": null,\n     \"syarat\": \"\",\n     \"efek\": \"nyawa - 3; pergi ke Kegelapan\",\n     \"id\": \"p3_2\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p4\",\n   \"title\": \"Aula\",\n   \"chapter\": \"c2\",\n   \"x\": 40,\n   \"y\": 200,\n   \"content\": \"Aula besar yang berdebu. {nama}, kamu membawa {emas} emas.\",\n   \"choices\": [\n    {\n     \"text\": \"Naik tangga ke loteng\",\n     \"to\": \"p5\",\n     \"syarat\": \"punya lampu\",\n     \"efek\": \"\",\n     \"id\": \"p4_0\"\n    },\n    {\n     \"text\": \"Masuk dapur\",\n     \"to\": \"p6\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p4_1\"\n    },\n    {\n     \"text\": \"Masuk ruang latihan\",\n     \"to\": \"p9\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p4_2\"\n    },\n    {\n     \"text\": \"Keluar ke gerbang\",\n     \"to\": \"p1\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p4_3\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p5\",\n   \"title\": \"Loteng\",\n   \"chapter\": \"c3\",\n   \"x\": 260,\n   \"y\": 200,\n   \"content\": \"Lampumu menerangi loteng. {musuh.nama} melayang di depan sebuah peti besar.\",\n   \"choices\": [\n    {\n     \"text\": \"Hadapi hantu\",\n     \"to\": \"p10\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p5_0\"\n    },\n    {\n     \"text\": \"Turun ke aula\",\n     \"to\": \"p4\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p5_1\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p10\",\n   \"title\": \"Pertarungan\",\n   \"chapter\": \"c3\",\n   \"x\": 480,\n   \"y\": 200,\n   \"content\": \"Kamu menyerang {musuh.nama}!\",\n   \"choices\": [\n    {\n     \"text\": \"Mundur ke loteng\",\n     \"to\": \"p5\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p10_0\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p6\",\n   \"title\": \"Dapur\",\n   \"chapter\": \"c2\",\n   \"x\": 40,\n   \"y\": 360,\n   \"content\": \"Dapur tua. Ada sisa roti di meja.\",\n   \"choices\": [\n    {\n     \"text\": \"Makan roti dari tas\",\n     \"to\": null,\n     \"syarat\": \"punya roti\",\n     \"efek\": \"buang roti; nyawa + 1\",\n     \"id\": \"p6_0\"\n    },\n    {\n     \"text\": \"Kembali ke aula\",\n     \"to\": \"p4\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p6_1\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p9\",\n   \"title\": \"Ruang Latihan\",\n   \"chapter\": \"c3\",\n   \"x\": 260,\n   \"y\": 360,\n   \"content\": \"Ruangan sepi dengan boneka jerami untuk berlatih.\",\n   \"choices\": [\n    {\n     \"text\": \"Latihan lagi\",\n     \"to\": \"p9\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p9_0\"\n    },\n    {\n     \"text\": \"Kembali ke aula\",\n     \"to\": \"p4\",\n     \"syarat\": \"\",\n     \"efek\": \"\",\n     \"id\": \"p9_1\"\n    }\n   ]\n  },\n  {\n   \"id\": \"p7\",\n   \"title\": \"Harta Karun\",\n   \"chapter\": \"c3\",\n   \"x\": 260,\n   \"y\": 520,\n   \"content\": \"Peti terbuka! {musuh.nama} lenyap dan kamu menang, {nama}!\",\n   \"choices\": []\n  },\n  {\n   \"id\": \"p8\",\n   \"title\": \"Kegelapan\",\n   \"chapter\": \"c1\",\n   \"x\": 480,\n   \"y\": 360,\n   \"content\": \"Semuanya gelap. Nyawamu tinggal {nyawa}. Cerita berakhir.\",\n   \"choices\": []\n  }\n ],\n \"folders\": [\n  {\n   \"id\": \"fu\",\n   \"name\": \"Bersama\",\n   \"parent\": null\n  },\n  {\n   \"id\": \"fb1\",\n   \"name\": \"Bab 1\",\n   \"parent\": null\n  },\n  {\n   \"id\": \"fb3\",\n   \"name\": \"Bab 3\",\n   \"parent\": null\n  }\n ],\n \"files\": [\n  {\n   \"id\": \"f_umum\",\n   \"name\": \"fungsi-umum\",\n   \"folder\": \"fu\",\n   \"code\": \"// SKRIP BERSAMA: tidak jalan sendiri, fungsinya dipakai semua skrip\\nfunction pukul(sasaran, daya) {\\n  sasaran.nyawa - daya\\n}\",\n   \"lib\": true\n  },\n  {\n   \"id\": \"f_gerbang\",\n   \"name\": \"Gerbang\",\n   \"folder\": \"fb1\",\n   \"code\": \"// TINGKAT 1: teks yang mengikuti nilai\\nteks \\\"Emas: {emas}. Nyawa: {nyawa}.\\\"\\nteks \\\"Kamu hampir tumbang!\\\" if nyawa < 2\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_taman\",\n   \"name\": \"Taman\",\n   \"folder\": \"fb1\",\n   \"code\": \"// TINGKAT 1: angka acak seperti dadu\\nhadiah = acak(1, 3)\\n// TINGKAT 2: if. Koin hanya bisa diambil sekali\\nif koin_taman == 0 {\\n  emas + hadiah\\n  koin_taman = 1\\n}\\nteks \\\"Dadu rejeki: {hadiah}. Koin taman hanya bisa diambil sekali.\\\"\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_gubuk\",\n   \"name\": \"Gubuk Tua\",\n   \"folder\": \"fb1\",\n   \"code\": \"// Atap runtuh: nyawa berkurang tiap masuk\\nnyawa - 1\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_latihan\",\n   \"name\": \"Ruang Latihan\",\n   \"folder\": \"fb3\",\n   \"code\": \"// TINGKAT 3: memakai fungsi pukul dari skrip bersama, ulang, dan objek\\npukul(boneka, 2)\\nulang 2 kali {\\n  pukul(boneka, 1)\\n}\\nteks \\\"Boneka {boneka.nama} tersisa {boneka.nyawa} nyawa.\\\"\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_tarung\",\n   \"name\": \"Pertarungan\",\n   \"folder\": \"fb3\",\n   \"code\": \"js\\n// TINGKAT 4: JavaScript. Perulangan while mengikuti nilai yang berubah\\nlet dmg = g.acak(2, 6) + g.baca(\\\"serang\\\")\\nwhile (g.baca(\\\"musuh.nyawa\\\") > 0 && dmg > 0) {\\n  g.tambah(\\\"musuh.nyawa\\\", -dmg)\\n  dmg -= 3\\n}\\nif (g.baca(\\\"musuh.nyawa\\\") <= 0) {\\n  g.pergi(\\\"Harta Karun\\\")\\n} else {\\n  g.tambah(\\\"nyawa\\\", -1)\\n  g.teks(\\\"Hantu tersisa \\\" + g.baca(\\\"musuh.nyawa\\\") + \\\" nyawa. Ia membalas! Nyawamu tinggal \\\" + g.baca(\\\"nyawa\\\") + \\\".\\\")\\n  if (g.baca(\\\"nyawa\\\") <= 0) g.pergi(\\\"Kegelapan\\\")\\n}\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_akhir\",\n   \"name\": \"Harta Karun\",\n   \"folder\": \"fb3\",\n   \"code\": \"// TINGKAT 2: teks bersyarat\\nemas * 2\\nteks \\\"Total emas: {emas}.\\\"\\nteks \\\"Peringkat: Juragan\\\" if emas >= 20\\nteks \\\"Peringkat: Pemula\\\" if emas < 20\",\n   \"lib\": false\n  },\n  {\n   \"id\": \"f_suasana\",\n   \"name\": \"suasana-otomatis\",\n   \"folder\": \"fu\",\n   \"mode\": \"tiap\",\n   \"lib\": false,\n   \"code\": \"// OTOMATIS: jalan di setiap bagian. Layar memerah saat nyawa menipis, dan ada efek memudar\\njs\\nif (g.baca(\\\"nyawa\\\") < 2) {\\n  g.tema({ latar: \\\"#2a0a0a\\\", teks: \\\"#ffd6d6\\\" })\\n} else {\\n  g.tema(null)\\n}\\ng.fade(300, 200)\"\n  },\n  {\n   \"id\": \"f_rahasia\",\n   \"name\": \"Kamar Rahasia\",\n   \"folder\": \"fb3\",\n   \"mode\": \"biasa\",\n   \"lib\": false,\n   \"code\": \"// Skrip ini menunggu. Begitu kamu membuat bagian bernama \\\"Kamar Rahasia\\\", otomatis tersambung\\nemas + 5\\nteks \\\"Kamu menemukan 5 emas di kamar rahasia.\\\"\"\n  }\n ]\n}";
-const K='cerita-interaktif-v1';
-function load(){try{return JSON.parse(localStorage.getItem(K))||{stories:[],active:null}}catch(e){return{stories:[],active:null}}}
-db=load();
+/* ── Penyimpanan: IndexedDB "cerita-aset" (cerita + aset). State pemain tetap di localStorage (saveKey). ──
+   Store "cerita" key=storyId; store "aset" key="<idCerita>/<idAset>", nilai {blob,tipe,ukuran,hash}.
+   localStorage hanya menyimpan meta kecil (KM: urutan Pustaka + cerita aktif) dan K lama (dihapus setelah migrasi terverifikasi). */
+const K='cerita-interaktif-v1',KM='cerita-meta';
+let idb=null,modeTerbatas=false;
+const bukaDB=()=>new Promise((ok,gagal)=>{let r;try{if(!window.indexedDB)throw new Error('IndexedDB tidak tersedia');r=indexedDB.open('cerita-aset',1)}catch(e){return gagal(e)}
+  r.onupgradeneeded=()=>{r.result.createObjectStore('cerita');r.result.createObjectStore('aset')};
+  r.onsuccess=()=>ok(r.result);r.onerror=()=>gagal(r.error);r.onblocked=()=>gagal(new Error('DB terblokir'))});
+const tx=(st,mode,fn)=>new Promise((ok,gagal)=>{const t=idb.transaction(st,mode);let v;const q=fn(t.objectStore(st));if(q)q.onsuccess=()=>{v=q.result};t.oncomplete=()=>ok(v);t.onerror=t.onabort=()=>gagal(t.error)});
+const ceritaPut=s=>tx('cerita','readwrite',o=>o.put(s,s.id));
+const ceritaGet=id=>tx('cerita','readonly',o=>o.get(id));
+const ceritaDelete=id=>tx('cerita','readwrite',o=>o.delete(id));
+const ceritaList=()=>tx('cerita','readonly',o=>o.getAll());
+const kunciAset=(idc,id)=>{if(typeof idc!=='string'||!idc||idc.includes('/'))throw new Error('idCerita tidak valid');return idc+'/'+id};
+const rentangAset=idc=>{kunciAset(idc,'');return IDBKeyRange.bound(idc+'/',idc+'/\uffff')};
+const asetPut=(idc,id,v)=>tx('aset','readwrite',o=>o.put({blob:v.blob,tipe:v.tipe,ukuran:v.ukuran,hash:v.hash},kunciAset(idc,id)));
+const asetGet=(idc,id)=>tx('aset','readonly',o=>o.get(kunciAset(idc,id)));
+const asetDelete=(idc,id)=>tx('aset','readwrite',o=>o.delete(kunciAset(idc,id)));
+const asetHapusCerita=idc=>tx('aset','readwrite',o=>o.delete(rentangAset(idc)));
+const asetList=idc=>new Promise((ok,gagal)=>{const t=idb.transaction('aset'),r=[],aw=idc.length+1,c=t.objectStore('aset').openCursor(rentangAset(idc));c.onsuccess=()=>{const k=c.result;if(k){r.push({id:String(k.key).slice(aw),...k.value});k.continue()}};t.oncomplete=()=>ok(r);t.onerror=t.onabort=()=>gagal(t.error)});
+const tulisBanyak=(ubah,hapus)=>new Promise((ok,gagal)=>{const t=idb.transaction('cerita','readwrite'),o=t.objectStore('cerita');ubah.forEach(s=>o.put(s,s.id));hapus.forEach(i=>o.delete(i));t.oncomplete=ok;t.onerror=t.onabort=()=>gagal(t.error)});
+const bacaLS=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+const cache=new Map();let tmr=0;
+function sinkron(){tmr=0;if(!idb)return;
+  const ubah=[],ada=new Set();
+  for(const s of db.stories){ada.add(s.id);const j=JSON.stringify(s);if(cache.get(s.id)!==j)ubah.push([s,j])}
+  const hapus=[...cache.keys()].filter(i=>!ada.has(i));
+  if(!ubah.length&&!hapus.length)return;
+  tulisBanyak(ubah.map(x=>x[0]),hapus).then(()=>{ubah.forEach(([s,j])=>cache.set(s.id,j));hapus.forEach(i=>{cache.delete(i);asetHapusCerita(i).catch(e=>console.warn('[aset] blob cerita tidak terhapus:',i,e))})}).catch(e=>toast('Gagal menyimpan ke IndexedDB: '+((e&&e.message)||e)))}
+addEventListener('pagehide',sinkron);document.addEventListener('visibilitychange',()=>{if(document.hidden)sinkron()});
+/* Migrasi: K (localStorage) → IndexedDB. K dihapus hanya setelah semua cerita terbaca ulang dari IndexedDB. */
+async function inisialisasi(){
+  const lama=bacaLS(K),ls=lama&&Array.isArray(lama.stories)?lama:null,meta=bacaLS(KM)||{};
+  try{idb=await bukaDB();
+    let ada=await ceritaList();
+    if(ls){
+      const baru=ls.stories.filter(s=>s&&s.id&&!ada.some(a=>a.id===s.id));
+      if(baru.length)await tulisBanyak(baru,[]);
+      ada=await ceritaList();
+      if(!ls.stories.every(s=>!s||!s.id||ada.some(a=>a.id===s.id)))throw new Error('verifikasi migrasi gagal');
+      localStorage.removeItem(K);
+      console.info('[migrasi] '+baru.length+' cerita dipindah ke IndexedDB, key lama dihapus');
+      if(!meta.active)meta.active=ls.active;
+      meta.urut=[...(meta.urut||[]),...ls.stories.map(s=>s&&s.id)];
+    }
+    const per=new Map(ada.map(s=>[s.id,s])),urut=[...new Set([...(meta.urut||[]),...ada.map(s=>s.id)])].filter(i=>per.has(i));
+    db={stories:urut.map(i=>per.get(i)),active:per.has(meta.active)?meta.active:(urut[0]||null)};
+    db.stories.forEach(s=>cache.set(s.id,JSON.stringify(s)));
+  }catch(e){
+    console.warn('[penyimpanan] IndexedDB tidak dipakai:',e);idb=null;modeTerbatas=true;
+    db=ls||{stories:[],active:null};
+  }
+}
+/* ── Penyimpanan tetap (persist): lapisan tambahan untuk cache aset ──
+   Diminta SEKALI per sesi, saat aset pertama akan disimpan (bukan saat halaman dimuat). Hasil apa pun (true/false/galat) dicatat
+   di statusPersist dan tidak ditanyakan lagi di sesi yang sama; aset selalu tetap disimpan. Status hanya ditampilkan di tab Kode (bukan di Play). */
+let statusPersist=null,alasanPersist='',persistSesi=null; // statusPersist: null | 'permanen' | 'best-effort'
+const labelPersist=()=>statusPersist==='permanen'?'permanen':statusPersist==='best-effort'?'best-effort'+(alasanPersist?' ('+alasanPersist+')':''):'belum diketahui';
+function setStatusPersist(st,alasan){statusPersist=st;alasanPersist=alasan||'';const e=document.getElementById('stPersist');if(e)e.textContent=labelPersist()}
+async function cekPersist(){ // hanya membaca status, tidak meminta izin
+  try{if(navigator.storage&&navigator.storage.persisted)setStatusPersist((await navigator.storage.persisted())?'permanen':'best-effort')}catch(e){}
+}
+function pastikanPersist(){ // tidak pernah menolak (reject) dan tidak perlu ditunggu
+  if(persistSesi)return persistSesi;
+  return persistSesi=(async()=>{
+    try{
+      const st=navigator.storage;
+      if(!st||!st.persist){setStatusPersist('best-effort','tidak didukung');return false}
+      if(st.persisted&&await st.persisted()){setStatusPersist('permanen');return true}
+      const ya=await st.persist();setStatusPersist(ya?'permanen':'best-effort',ya?'':'ditolak');return !!ya;
+    }catch(e){setStatusPersist('best-effort','galat');return false}
+  })();
+}
+cekPersist();
+
+/* ── Aset: manifest + resolveAset (Fase B; belum dipakai UI) ──
+   Sumber path = cerita.aset {[id]:{path,tipe}} (ikut terekspor/terimpor bersama cerita; cerita lama tanpa field = kosong).
+   IndexedDB (store "aset") hanya cache blob + ukuran + hash, kunci fisik "<idCerita>/<id>" (tiap cerita punya ruang sendiri).
+   Blob tidak ikut terekspor/terduplikasi: perangkat baru mengambil dari path lalu mengisi cache lagi.
+   Manifest TIDAK disimpan: dibangun dari cerita.aset + IndexedDB. Bentuk: {versi:1, aset:{[id]:{path,tipe,ukuran,hash}}}.
+   resolveAset(idCerita,id): online → cache → indexeddb → placeholder. URL blob dicatat dan dicabut saat scene berganti. */
+const ASET_ONLINE_MS=4000,EKS_ASET={'image/png':'.png','image/jpeg':'.jpg','image/webp':'.webp','image/gif':'.gif','image/svg+xml':'.svg','video/mp4':'.mp4','video/webm':'.webm','audio/mpeg':'.mp3','audio/ogg':'.ogg','audio/wav':'.wav','image/avif':'.avif','audio/mp4':'.m4a','audio/aac':'.aac'};
+const PLACEHOLDER_ASET='data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="100%" height="100%" fill="#8884"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="14" fill="#888">Aset belum tersedia</text></svg>');
+/* cerita.aset bisa datang dari impor (tidak tepercaya): id dan path dibatasi, path hanya relatif "aset/<nama>" (bukan URL luar, bukan ../). */
+const ID_ASET=/^[A-Za-z0-9][\w.-]{0,63}$/,PATH_ASET=/^aset\/[A-Za-z0-9][\w.-]{0,80}$/;
+const cariCerita=idc=>db.stories.find(x=>x.id===idc)||null;
+const daftarAset=s=>s&&s.aset&&typeof s.aset==='object'&&!Array.isArray(s.aset)?s.aset:{};
+const entriCerita=(s,id)=>{const d=daftarAset(s);return Object.hasOwn(d,id)&&d[id]&&typeof d[id]==='object'?d[id]:null};
+const pathCerita=(s,id)=>{const e=entriCerita(s,id);return e&&typeof e.path==='string'&&PATH_ASET.test(e.path)?e.path:null};
+async function buatManifest(idc){
+  const s=cariCerita(idc),m={versi:1,aset:{}};
+  for(const id of Object.keys(daftarAset(s))){
+    const e=entriCerita(s,id),r=idb?await asetGet(idc,id).catch(()=>undefined):undefined;
+    m.aset[id]={path:pathCerita(s,id),tipe:(e&&e.tipe)||(r&&r.tipe)||null,ukuran:r?r.ukuran:null,hash:r?r.hash:null};
+  }
+  return m;
+}
+async function hashAset(b){try{const h=await crypto.subtle.digest('SHA-256',await b.arrayBuffer());return[...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,'0')).join('')}catch(e){return''}}
+/* Tambah/hapus aset: dua tempat selalu diubah bersama (IndexedDB dulu, baru cerita) lalu save(). */
+async function tambahAset(idc,id,blob){
+  id=String(id);const s=cariCerita(idc);if(!s)throw new Error('Cerita tidak ditemukan');
+  if(!ID_ASET.test(id))throw new Error('id aset: huruf, angka, _ - . saja; diawali huruf/angka; maksimal 64 karakter');
+  if(!idb)throw new Error('IndexedDB tidak tersedia');
+  const tipe=blob&&blob.type,eks=EKS_ASET[tipe];if(!eks)throw new Error('Jenis berkas tidak didukung: '+(tipe||'tidak dikenal'));
+  const ada=entriCerita(s,id);if(ada&&ada.tipe!==tipe)throw new Error('id "'+id+'" sudah dipakai untuk jenis lain; hapus dulu');
+  pastikanPersist(); // sekali per sesi; tidak ditunggu, aset tetap disimpan apa pun hasilnya
+  await asetPut(idc,id,{blob,tipe,ukuran:blob.size,hash:await hashAset(blob)});
+  if(!ada||!pathCerita(s,id)){if(!s.aset||typeof s.aset!=='object'||Array.isArray(s.aset))s.aset={};s.aset[id]={path:'aset/'+id+eks,tipe}}
+  save();
+}
+async function hapusAset(idc,id){
+  id=String(id);const s=cariCerita(idc);if(!s)throw new Error('Cerita tidak ditemukan');
+  if(idb)await asetDelete(idc,id);
+  if(entriCerita(s,id))delete s.aset[id];
+  save();
+}
+
+/* Pengelola URL blob. genAset naik setiap revoke; hasil async dari scene lama dikenali lewat gen yang usang. */
+let genAset=0,sceneAset=null;const urlAset=new Set();
+function buatUrl(blob,gen){if(gen!==genAset){const e=new Error('scene sudah berganti');e.basi=true;throw e}const u=URL.createObjectURL(blob);urlAset.add(u);return u}
+function revokeAset(){genAset++;urlAset.forEach(u=>URL.revokeObjectURL(u));urlAset.clear()}
+kaitScene=e=>{let sc=null;try{sc=e&&e.inti?e.inti.tampilan().scene:null}catch(x){}if(sc!==sceneAset){revokeAset();sceneAset=sc}};
+
+async function cobaOnline(path){
+  if(navigator.onLine===false)return null;
+  const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ASET_ONLINE_MS);
+  try{const r=await fetch(path,{method:'HEAD',cache:'no-cache',signal:ac.signal});
+    if(r.status!==200||/^text\/html/i.test(r.headers.get('content-type')||''))return null; // server yang membalas 200 + halaman web untuk path yang tak ada
+    return new URL(path,location.href).href}catch(e){return null}finally{clearTimeout(t)}
+}
+async function cobaCache(path,gen){
+  if(typeof caches==='undefined')return null;
+  try{const r=await caches.match(path);return r?buatUrl(await r.blob(),gen):null}catch(e){if(e.basi)throw e;return null}
+}
+async function resolveAset(idc,id){
+  id=String(id);const gen=genAset,s=cariCerita(idc),path=pathCerita(s,id); // path dari cerita.aset, bukan dari IndexedDB
+  if(path){
+    const on=await cobaOnline(path);if(on)return{url:on,sumber:'online'};
+    const ca=await cobaCache(path,gen);if(ca)return{url:ca,sumber:'cache'};
+  }
+  if(entriCerita(s,id)&&idb){ // blob lokal hanya dipakai untuk aset yang terdaftar di cerita ini
+    let rec;try{rec=await asetGet(idc,id)}catch(e){}
+    if(rec&&rec.blob instanceof Blob)return{url:buatUrl(rec.blob,gen),sumber:'indexeddb'};
+  }
+  return{url:PLACEHOLDER_ASET,sumber:'placeholder'};
+}
+async function unduhAset(idc,id){ // tombol "Unduh aset": ambil dari cerita.aset[id].path lalu simpan ke IndexedDB
+  id=String(id);const s=cariCerita(idc),path=pathCerita(s,id);if(!path)throw new Error('aset "'+id+'" tidak punya path di cerita ini');
+  if(!idb)throw new Error('IndexedDB tidak tersedia');
+  pastikanPersist(); // dipanggil di awal (klik pemain masih berlaku), sebelum menunggu jaringan
+  const r=await fetch(path);if(!r.ok)throw new Error('server menjawab '+r.status);
+  const blob=await r.blob();if(/^text\/html/i.test(blob.type))throw new Error('server mengirim halaman web, bukan aset');
+  await asetPut(idc,id,{blob,tipe:blob.type||entriCerita(s,id).tipe||'',ukuran:blob.size,hash:await hashAset(blob)});
+}
+async function applyAset(el,idc,id,tipe){
+  tipe=tipe||el.tagName.toLowerCase();
+  if(!['img','video','audio'].includes(tipe))throw new Error('applyAset: tipe harus img, video, atau audio');
+  const g=genAset;if(el._btnAset){el._btnAset.remove();el._btnAset=null}
+  let r;try{r=await resolveAset(idc,id)}catch(e){if(e.basi)return null;throw e}
+  if(g!==genAset)return null; // scene sudah berganti selama menunggu
+  el.dataset.sumber=r.sumber;
+  if(r.sumber==='placeholder'){
+    if(tipe==='img'){el.src=r.url;if(!el.alt)el.alt='Aset belum tersedia'}else{el.removeAttribute('src');if(el.load)el.load()}
+    if(pathCerita(cariCerita(idc),id)){ // tombol hanya bila ada path untuk diunduh
+      const b=document.createElement('button');b.type='button';b.className='sm';b.textContent='Unduh aset';
+      b.onclick=async()=>{b.disabled=true;b.textContent='Mengunduh…';try{await unduhAset(idc,id);await applyAset(el,idc,id,tipe)}catch(e){b.disabled=false;b.textContent='Unduh aset';toast('Gagal mengunduh aset: '+((e&&e.message)||e))}};
+      el.insertAdjacentElement('afterend',b);el._btnAset=b;
+    }
+  }else{el.src=r.url;if(tipe!=='img'&&el.load)el.load()}
+  return r;
+}
+/* ── Validator codec aset (Fase C) ──
+   Jenis ditentukan dari ISI berkas (magic bytes), bukan ekstensi atau file.type. Yang dibaca hanya potongan kecil lewat
+   blob.slice().arrayBuffer() (async, di luar thread utama); satu-satunya bacaan besar adalah blok moov MP4 (maks 16 MB).
+   Hasil: {ok, jenis:'gambar'|'audio'|'video', format, mime, ext, peringatan:[], galat}. mime = tipe baku yang disimpan ke IndexedDB. */
+const INFO_BESAR=2*1048576,KONFIRM_BESAR=10*1048576,BATAS_MOOV=16*1048576,IOS_LAMA='iOS lama mungkin tidak mendukung.';
+const ukuranTeks=n=>n<1024?n+' B':n<1048576?Math.round(n/1024)+' KB':(n/1048576).toFixed(n<1.05e7?1:0)+' MB';
+const asc=(b,i,n)=>{let t='';for(let k=i;k<i+n&&k<b.length;k++)t+=String.fromCharCode(b[k]);return t};
+const u32=(b,i)=>((b[i]<<24)|(b[i+1]<<16)|(b[i+2]<<8)|b[i+3])>>>0;
+const potong=async(f,a,z)=>new Uint8Array(await f.slice(a,z).arrayBuffer());
+async function periksaMp4(f){ // jalan di kotak tingkat atas (hanya header 16 byte), lalu baca moov: handler trek + codec tiap trek
+  let pos=0,moov=null;
+  for(let n=0;n<64&&pos<f.size;n++){
+    const h=await potong(f,pos,pos+16);if(h.length<8)break;
+    let sz=u32(h,0);const tipe=asc(h,4,4);
+    if(sz===1){if(h.length<16||u32(h,8)!==0)break;sz=u32(h,12)}else if(sz===0)sz=f.size-pos;
+    if(sz<8)break;
+    if(tipe==='moov'){moov={pos,sz};break}
+    pos+=sz;
+  }
+  if(!moov||moov.pos+moov.sz>f.size)return{galat:true};
+  if(moov.sz>BATAS_MOOV)return{besar:true};
+  const t=new TextDecoder('latin1').decode(await potong(f,moov.pos,moov.pos+moov.sz)),video=[],audio=[],re=/hdlr|stsd/g;let cur='',m;
+  while((m=re.exec(t))){if(m[0]==='hdlr')cur=t.substr(m.index+12,4);else{const e=t.substr(m.index+16,4);if(cur==='vide')video.push(e);else if(cur==='soun')audio.push(e)}}
+  return{video,audio};
+}
+async function validasiAset(f){
+  const no=g=>({ok:false,galat:g,peringatan:[]}),ya=(jenis,format,mime,ext,peringatan=[])=>({ok:true,jenis,format,mime,ext,peringatan,galat:null});
+  try{
+    if(!f||typeof f.slice!=='function'||typeof f.size!=='number')return no('Berkas tidak terbaca. Pilih ulang.');
+    if(!f.size)return no('Berkas kosong. Pilih berkas lain.');
+    const b=await potong(f,0,128),a4=asc(b,0,4);
+    if(b[0]===0xFF&&b[1]===0xD8&&b[2]===0xFF)return ya('gambar','JPEG','image/jpeg','.jpg');
+    if(a4==='\x89PNG'&&b[4]===0x0D&&b[5]===0x0A&&b[6]===0x1A&&b[7]===0x0A)return ya('gambar','PNG','image/png','.png');
+    if(a4==='RIFF'){const k=asc(b,8,4);
+      if(k==='WEBP')return ya('gambar','WebP','image/webp','.webp');
+      if(k==='AVI ')return no('AVI tidak didukung browser. Ubah ke MP4 (H.264).');
+      if(k==='WAVE')return ya('audio','WAV','audio/wav','.wav')}
+    if(asc(b,4,4)==='ftyp'){
+      const mj=asc(b,8,4),br=[mj];for(let i=16;i+4<=Math.min(b.length,u32(b,0)||b.length);i+=4)br.push(asc(b,i,4));
+      if(mj==='avif'||mj==='avis'||(['mif1','miaf'].includes(mj)&&br.some(x=>x==='avif'||x==='avis')))return ya('gambar','AVIF','image/avif','.avif',[`AVIF: ${IOS_LAMA} Untuk aman, ubah ke WebP atau JPEG.`]);
+      if(['heic','heix','hevc','hevx','mif1','msf1'].includes(mj))return no('HEIC/HEIF tidak didukung browser. Ubah ke JPEG, PNG, atau WebP.');
+      if(mj==='qt  ')return no('MOV (QuickTime) tidak didukung browser. Ubah ke MP4 (H.264).');
+      const r=await periksaMp4(f);
+      if(r.galat)return no('Berkas MP4/M4A rusak atau tidak lengkap. Ekspor ulang dari aplikasi asalnya.');
+      if(r.besar){const au=['M4A ','M4B ','M4P '].includes(mj),pr='Struktur berkas terlalu besar untuk diperiksa. Pastikan '+(au?'audio AAC.':'video H.264.');return au?ya('audio','M4A','audio/mp4','.m4a',[pr]):ya('video','MP4','video/mp4','.mp4',[pr])}
+      if(r.video.length){
+        const v=r.video[0],per=[];let fm='MP4 (H.264)';
+        if(v==='avc1'||v==='avc3'){}
+        else if(['hvc1','hev1','dvh1','dvhe'].includes(v)){fm='MP4 (HEVC)';per.push('Video HEVC (H.265) hanya jalan di Safari dan sebagian perangkat. Ubah ke H.264.')}
+        else if(v==='av01'){fm='MP4 (AV1)';per.push('Video AV1: perangkat lama mungkin tidak bisa memutar. Ubah ke H.264 agar aman.')}
+        else if(v==='vp09'){fm='MP4 (VP9)';per.push('Video VP9 di MP4 tidak jalan di semua browser. Ubah ke H.264.')}
+        else{fm='MP4';per.push(`Codec video "${v.trim()}" tidak dikenal. Ubah ke H.264.`)}
+        if(r.audio.length&&!r.audio.includes('mp4a'))per.push('Audio di dalam video bukan AAC; bisa tanpa suara di sebagian browser.');
+        return ya('video',fm,'video/mp4','.mp4',per)}
+      if(r.audio.length){
+        if(r.audio.includes('mp4a'))return ya('audio','M4A (AAC)','audio/mp4','.m4a');
+        return ya('audio','M4A','audio/mp4','.m4a',['Codec audio bukan AAC (mis. ALAC); sebagian browser tidak bisa memutar. Ubah ke AAC atau MP3.'])}
+      return no('Tidak ada trek video atau audio di berkas ini.')}
+    if(b[0]===0x1A&&b[1]===0x45&&b[2]===0xDF&&b[3]===0xA3){const t=asc(b,0,128);
+      if(t.includes('matroska'))return no('MKV tidak didukung browser. Ubah ke MP4 (H.264) atau WebM.');
+      if(t.includes('webm'))return ya('video','WebM','video/webm','.webm',[`WebM: ${IOS_LAMA} Untuk aman, ubah ke MP4 (H.264).`]);
+      return no('Format video tidak dikenal. Pakai MP4 (H.264) atau WebM.')}
+    if(a4==='OggS')return ya('audio','OGG','audio/ogg','.ogg',[`OGG: ${IOS_LAMA} Untuk aman, ubah ke MP3 atau M4A.`]);
+    if(a4.startsWith('ID3'))return ya('audio','MP3','audio/mpeg','.mp3');
+    if(b[0]===0xFF){
+      if((b[1]&0xF6)===0xF0)return ya('audio','AAC','audio/aac','.aac');
+      if((b[1]&0xE0)===0xE0&&((b[1]>>1)&3)!==0&&((b[1]>>3)&3)!==1)return ya('audio','MP3','audio/mpeg','.mp3')}
+    if(a4==='GIF8')return ya('gambar','GIF','image/gif','.gif');
+    if(a4==='fLaC')return no('FLAC belum didukung. Ubah ke MP3 atau M4A.');
+    if(asc(b,0,128).includes('<svg'))return no('SVG belum didukung. Ubah ke PNG atau WebP.');
+    return no('Format tidak dikenal. Pakai JPEG/PNG/WebP, MP3/M4A/AAC/OGG, atau MP4/WebM.');
+  }catch(e){return no('Berkas tidak bisa dibaca ('+((e&&e.message)||e)+'). Pilih ulang.')}
+}
+/* ── UI aset (Fase C): dialog di tab Kode. Hanya manajemen; belum dipakai di bagian cerita. ── */
+let asetBaru=null,asetTok=0,prevList=[],prevForm=null;
+const revokeList=()=>{prevList.forEach(u=>URL.revokeObjectURL(u));prevList=[]},revokeForm=()=>{if(prevForm){URL.revokeObjectURL(prevForm);prevForm=null}};
+D.addEventListener('close',()=>{revokeList();revokeForm()});
+const jenisDari=t=>String(t||'').startsWith('audio/')?'audio':String(t||'').startsWith('video/')?'video':'gambar';
+const medEl=(jenis,u)=>jenis==='audio'?`<audio controls preload="none" src="${u}" style="width:100%"></audio>`:jenis==='video'?`<video muted playsinline preload="metadata" src="${u}" onloadedmetadata="this.currentTime=0.1" style="max-width:100%;max-height:120px;border-radius:8px"></video>`:`<img alt="" src="${u}" style="max-width:100%;max-height:120px;border-radius:8px">`;
+const idDari=n=>String(n||'').replace(/\.[^.]*$/,'').replace(/[^A-Za-z0-9_.-]+/g,'-').replace(/^[^A-Za-z0-9]+/,'').slice(0,60)||'aset';
+async function asetRender(){
+  const s=S(),el=$('alist');if(!s||!el)return;
+  let rec=[];try{rec=idb?await asetList(s.id):[]}catch(e){}
+  const el2=$('alist');if(!el2||S()!==s)return; // dialog sudah berganti selama menunggu
+  revokeList();
+  const per=new Map(rec.map(r=>[r.id,r])),ids=Object.keys(daftarAset(s)),tot=rec.reduce((a,r)=>a+(r.ukuran||0),0);
+  el2.innerHTML=ids.length?`<p class="sub">${ids.length} aset · ${ukuranTeks(tot)} di perangkat ini</p>`+ids.map(id=>{
+    const r=per.get(id),e=entriCerita(s,id)||{},tp=(r&&r.tipe)||e.tipe||'';
+    return `<div class="card"><div class="row sp"><div style="flex:1;min-width:0"><h3 style="overflow:hidden;text-overflow:ellipsis">${esc(id)}</h3><p>${esc(tp)}${r?' · '+ukuranTeks(r.ukuran||0):' · belum ada di perangkat ini'}</p></div><button class="sm del" data-a="adel" data-id="${esc(id)}">Hapus</button></div>${r&&r.blob instanceof Blob?`<div style="margin-top:8px">${medEl(jenisDari(tp),(()=>{const u=URL.createObjectURL(r.blob);prevList.push(u);return u})())}</div>`:''}</div>`}).join(''):'<p class="sub">Belum ada aset.</p>';
+}
+function asetDlg(){
+  const s=S();if(!s)return;revokeList();revokeForm();asetBaru=null;asetTok++;
+  dlg(`<h2>Aset</h2><p class="sub">Gambar, audio, dan video untuk cerita ini. Gambar dipasang sebagai latar lewat tombol Ubah di bagian cerita.</p><div id="alist"><p class="sub">Memuat…</p></div><div class="sec"><b>Tambah aset</b></div>${idb?'':'<p class="err">IndexedDB tidak tersedia (mode terbatas). Aset belum bisa ditambahkan.</p>'}<input type="file" id="af" accept="image/*,audio/*,video/*" ${idb?'':'disabled'}><div id="apv"></div><div id="ast" class="sub"></div><label>ID aset</label><input id="aid" maxlength="64" autocapitalize="off" spellcheck="false" placeholder="mis. gerbang-pagi"><div id="aidn" class="sub"></div><div class="row" style="justify-content:flex-end"><button data-a="dx">Tutup</button><button class="pr" id="aadd" data-a="aadd" disabled>Tambah</button></div>`,null);
+  asetRender();
+}
+function segarkanAdd(){
+  const s=S(),bt=$('aadd'),n=$('aidn');if(!s||!bt||!n)return;
+  const id=$('aid').value.trim(),b=asetBaru;let g='',salah=!b;
+  if(b){
+    if(!ID_ASET.test(id)){g='ID: huruf, angka, _ - . saja; awali huruf atau angka; maksimal 64 karakter.';salah=true}
+    else{const ada=entriCerita(s,id);if(ada&&ada.tipe!==b.blob.type){g='ID sudah dipakai untuk jenis lain. Ganti ID atau hapus aset lama.';salah=true}else if(ada)g='ID sudah ada: aset lama akan diganti.'}
+  }
+  n.className=salah&&g?'err':'sub';n.textContent=g;bt.disabled=salah;
+}
+async function asetTambah(){
+  const s=S(),b=asetBaru,bt=$('aadd');if(!s||!b||!bt||bt.disabled)return;
+  if(b.blob.size>KONFIRM_BESAR&&!b.sudahYa){b.sudahYa=true;bt.textContent='Ya, lanjutkan';const n=$('ast');if(n)n.insertAdjacentHTML('beforeend','<p class="err" style="background:var(--a50);color:var(--t)">File ini besar. Lanjutkan?</p>');return} // konfirmasi sekali per berkas
+  const id=$('aid').value.trim();bt.disabled=true;bt.textContent='Menambahkan…';
+  try{await tambahAset(s.id,id,b.blob);toast('Aset "'+id+'" ditambahkan');asetDlg();render()}
+  catch(e){bt.textContent='Tambah';bt.disabled=false;warn('Gagal menambah aset: '+((e&&e.message)||e))}
+}
+document.addEventListener('input',e=>{if(e.target.id==='aid')segarkanAdd()});
+document.addEventListener('change',async e=>{
+  if(e.target.id!=='af')return;
+  const f=e.target.files&&e.target.files[0],t=++asetTok;asetBaru=null;revokeForm();
+  const st=$('ast'),pv=$('apv');if(!st||!pv)return;
+  pv.innerHTML='';st.className='sub';st.textContent=f?'Memeriksa…':'';segarkanAdd();
+  if(!f)return;
+  const h=await validasiAset(f);if(t!==asetTok||!$('ast'))return;
+  if(!h.ok){st.innerHTML=`<p class="err">${esc(h.galat)}</p>`;return}
+  const blob=new Blob([f],{type:h.mime}); // tidak menyalin data; hanya memberi tipe baku
+  asetBaru={blob,h};
+  st.innerHTML=`<p class="sub" style="margin:0 0 6px">✓ ${esc(h.format)} · ${ukuranTeks(f.size)}</p>`+h.peringatan.map(m=>`<p class="err" style="background:var(--a50);color:var(--t)">⚠ ${esc(m)}</p>`).join('')+(f.size>INFO_BESAR?`<p class="sub" style="margin:0 0 6px">File cukup besar (${ukuranTeks(f.size)}). Pertimbangkan format lebih kecil untuk file besar.</p>`:'');
+  prevForm=URL.createObjectURL(blob);pv.innerHTML=medEl(h.jenis,prevForm);
+  $('aid').value=idDari(f.name);segarkanAdd();
+});
+/* ── Gambar latar bagian (fitur 1) ──
+   passage.gambar = id aset (opsional; bagian lama tanpa field tetap valid). Render: latarGambar (blok PLAYER). */
+let pgbVal=null;
+function pasangGambar(){ // Play di editor: isi <img class="bgi"> lewat resolveAset (online → cache → IndexedDB → placeholder)
+  const s=S(),el=document.querySelector('#app .stage .bgi');if(!s||!el)return;
+  revokeAset(); // DOM sudah diganti: URL render sebelumnya (scene yang sama) tidak dipakai lagi
+  applyAset(el,s.id,el.dataset.gambar,'img').catch(e=>console.warn('[gambar]',e));
+}
+async function pgbRender(){
+  const s=S(),el=$('pgb');if(!s||!el)return;
+  const id=pgbVal;let pv='';revokeList();
+  if(id){
+    let r=null;try{r=idb&&Object.hasOwn(daftarAset(s),id)?await asetGet(s.id,id):null}catch(e){}
+    if(!$('pgb'))return; // dialog sudah berganti selama menunggu
+    if(r&&r.blob instanceof Blob){const u=URL.createObjectURL(r.blob);prevList.push(u);pv=`<img alt="" src="${u}" style="max-width:100%;max-height:120px;border-radius:8px;display:block;margin-bottom:6px">`}
+    else pv='<p class="err" style="background:var(--a50);color:var(--t)">Aset belum tersedia di perangkat ini. Pemain akan melihat placeholder.</p>';
+  }
+  el.innerHTML=pv+`<p class="sub" style="margin:0 0 6px">${id?esc(id):'Belum ada gambar.'}</p><div class="row" style="margin-bottom:10px"><button type="button" class="sm" data-a="pgb">Pilih gambar</button>${id?'<button type="button" class="sm del" data-a="pgx">Lepas gambar</button>':''}</div><div id="pgl"></div>`;
+}
+async function pgbDaftar(){
+  const s=S(),el=$('pgl');if(!s||!el)return;
+  if(el.firstChild){el.innerHTML='';return} // klik lagi = tutup
+  const d=daftarAset(s),ids=Object.keys(d).filter(i=>String((d[i]&&d[i].tipe)||'').startsWith('image/'));
+  if(!ids.length){el.innerHTML='<p class="sub">Belum ada aset gambar. Impor dulu di tab Kode, tombol Aset.</p>';return}
+  let rec=[];try{rec=idb?await asetList(s.id):[]}catch(e){}
+  const el2=$('pgl');if(!el2)return;
+  const per=new Map(rec.map(r=>[r.id,r]));
+  el2.innerHTML=ids.map(i=>{const r=per.get(i);let th='';
+    if(r&&r.blob instanceof Blob){const u=URL.createObjectURL(r.blob);prevList.push(u);th=`<img alt="" src="${u}" style="width:56px;height:40px;object-fit:cover;border-radius:6px">`}
+    return `<div class="card" data-a="pgp" data-id="${esc(i)}" style="cursor:pointer"><div class="row">${th}<div><h3>${esc(i)}</h3>${r?'':'<p>belum ada di perangkat ini</p>'}</div></div></div>`}).join('');
+}
+/* Ekspor HTML satu file: gambar latar yang dipakai disalin sebagai data URI ke salinan cerita (hanya untuk .html; .json dan bangunGame tidak berubah). */
+const inlineJanji=new Map(),inlineCache=new Map();
+const keDataUrl=b=>new Promise(ok=>{const f=new FileReader();f.onload=()=>ok(String(f.result));f.onerror=()=>ok('');f.readAsDataURL(b)});
+function inlineSiap(id){
+  let j=inlineJanji.get(id);if(j)return j;
+  j=(async()=>{
+    const out={},x=db.stories.find(v=>v.id===id);
+    try{if(x&&idb){
+      const pakai=[...new Set(x.passages.map(p=>p.gambar).filter(g=>typeof g==='string'&&entriCerita(x,g)))];
+      for(const g of pakai){
+        const r=await asetGet(id,g).catch(()=>null);
+        if(!r||!(r.blob instanceof Blob)||!String(r.tipe).startsWith('image/'))continue;
+        const d=await keDataUrl(r.blob);if(d)out[g]=d;
+      }
+    }}catch(e){console.warn('[inline]',e)}
+    inlineCache.set(id,out);return out;
+  })();
+  inlineJanji.set(id,j);return j;
+}
+function denganInline(x){
+  const o=inlineCache.get(x.id);if(!o||!Object.keys(o).length)return x;
+  const a={};for(const k of Object.keys(daftarAset(x)))a[k]=Object.assign({},x.aset[k]);
+  for(const k of Object.keys(o))a[k]=Object.assign(a[k]||{},{data:o[k]});
+  return Object.assign({},x,{aset:a});
+}
 let tab='lib',sel=null,hist=[],tmp=[],cur=null;
-save=()=>{try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
-let DL=null,more={};
-try{window.claude&&claude.use&&claude.use('downloads').then(d=>{DL=d}).catch(()=>{})}catch(e){}
+save=()=>{if(idb){try{localStorage.setItem(KM,JSON.stringify({active:db.active,urut:db.stories.map(x=>x.id)}))}catch(e){}clearTimeout(tmr);tmr=setTimeout(sinkron,250)}else try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
+let more={};
 /* Ekspor: hanya menyertakan blok <!-- PLAYER-BEGIN -->…<!-- PLAYER-END --> (tanpa kode editor).
    Catatan: pengenteng baris (enxuti) mengandaikan blok PLAYER tidak punya template literal multibaris yang peka spasi. */
 const enxuti=t=>{let c=0,o=[];for(let l of t.split('\n')){l=l.trim();if(c){const i=l.indexOf('*/');if(i<0)continue;c=0;l=l.slice(i+2).trim()}else if(l.startsWith('/*')){const i=l.indexOf('*/');if(i<0){c=1;continue}if(i+2===l.length)continue}if(l&&!l.startsWith('//'))o.push(l)}return o.join('\n')};
@@ -1464,12 +1830,27 @@ document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(e
 render();`;
   return `<!-- Editor Cerita Interaktif, (c) 2026 Helmy Hidayat, lisensi MIT -->\n<!DOCTYPE html>\n<html lang="id">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n<title>${esc(x.title)}</title>\n<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">\n<style>${css.join('\n')}\nbody{padding-bottom:0!important}</style>\n</head>\n<body>\n<main id="app"></main>\n<dialog id="dlg"></dialog>\n${S1}${enxuti(js.join('\n'))}\n${boot}${S2}\n</body>\n</html>`;
 }
+/* Unduh: Blob + <a download>. Tanpa API khusus. Jika gagal/terblokir, dialog fallback (salin / buka di tab baru). */
+function catat(m){const e=D.open&&D.querySelector('#dnote');if(e)e.textContent=m;else toast(m)}
+function siapkan(id,jenis){
+  const x=db.stories.find(v=>v.id===id);if(!x)return null;
+  if(jenis==='html'&&inlineJanji.has(id)&&!inlineCache.has(id)){warn('Gambar sedang disiapkan. Coba lagi sebentar.');return null}
+  const nama=(x.title||'cerita').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'cerita',h=jenis==='html';
+  try{return{nama:nama+(h?'.html':'.json'),mime:h?'text/html':'application/json',data:h?bangunGame(denganInline(x)):JSON.stringify({version:'1.2',story:x},null,1)}}catch(e){warn(e.message);return null}
+}
 function unduh(id,jenis){
-  const x=db.stories.find(v=>v.id===id);if(!x)return;
-  if(!DL){warn('Unduh berkas tidak tersedia di tampilan ini.');return}
-  const nama=(x.title||'cerita').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'cerita';
-  let data;try{data=jenis==='html'?bangunGame(x):JSON.stringify({version:'1.2',story:x},null,1)}catch(e){warn(e.message);return}
-  DL.save({filename:nama+(jenis==='html'?'.html':'.json'),data}).then(()=>{D.open&&D.close();toast('Berkas dikirim untuk disimpan')}).catch(e=>{if(e&&e.code==='declined')return;warn('Gagal menyimpan: '+((e&&e.message)||e))});
+  const b=siapkan(id,jenis);if(!b)return;
+  try{
+    const u=URL.createObjectURL(new Blob([b.data],{type:b.mime})),a=document.createElement('a');
+    a.href=u;a.download=b.nama;a.rel='noopener';a.style.display='none';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u),10000);
+    catat('Unduhan dimulai: '+b.nama+'. Tidak muncul? Pakai tombol di bawah.');
+  }catch(e){fallback(id,jenis,'Unduhan gagal ('+((e&&e.message)||e)+').')}
+}
+function fallback(id,jenis,pesan){
+  const b=siapkan(id,jenis);if(!b)return;
+  dlg(`<h2>Simpan manual</h2><p class="sub">${esc(pesan||'')} Salin teks ini lalu simpan sebagai <b>${esc(b.nama)}</b>, atau buka di tab baru dan simpan dari sana.</p><textarea id="f1" readonly style="min-height:200px;font-family:monospace;font-size:12px">${esc(b.data)}</textarea><p id="dnote" class="sub"></p><div class="row" style="justify-content:flex-end;flex-wrap:wrap"><button data-a="exp" data-id="${id}">Kembali</button><button data-a="fbo" data-id="${id}" data-j="${jenis}">Buka di tab baru</button><button class="pr" data-a="cp">Salin ke papan klip</button></div>`,null);
 }
 const btns=(ok='Simpan')=>`<div class="row" style="justify-content:flex-end"><button data-a="dx">Batal</button><button class="pr" data-a="ds">${ok}</button></div>`;
 function render(){
@@ -1477,6 +1858,7 @@ function render(){
   const s=S();
   $('app').innerHTML=tab==='gd'?vGuide():tab==='lib'?vLib():!s?head('Belum ada cerita','Pilih atau buat cerita di Pustaka.')+empty('Tidak ada cerita dipilih','',`<button class="pr" data-a="tab" data-id="lib">Ke Pustaka</button>`):tab==='ed'?vEd(s):tab==='map'?vMap(s):tab==='kd'?vKode(s):vPlay(s)+vDbg();
   if(tab==='map')drawMap();
+  if(tab==='play')pasangGambar();
 }
 
 function vLib(){
@@ -1579,7 +1961,7 @@ function vKode(s){
     const [c,t]=m==='tiap'?['oto','semua bagian']:m==='bersama'?['bs','fungsi bersama']:L.length?['on','→ '+L[0].title+(L.length>1?' +'+(L.length-1):'')]:['wt','belum tersambung'];
     return `<div class="fr" data-a="es" data-id="${f.id}"><span class="dt ${c}"></span><b>${esc(f.name)}</b><span class="mt">${esc(t)}</span></div>`};
   const dir=pid=>Fo.filter(x=>(x.parent||null)===pid).map(x=>`<details class="fd" open><summary>${esc(x.name)}</summary><div class="tr">${dir(x.id)}<div class="fa"><button class="ln" data-a="ns" data-id="${x.id}">+ Skrip</button><button class="ln" data-a="nf" data-id="${x.id}">+ Subfolder</button><button class="ln" data-a="rf" data-id="${x.id}">Ganti nama</button><button class="ln" data-a="df" data-id="${x.id}">Hapus</button></div></div></details>`).join('')+F.filter(x=>(x.folder||null)===pid).map(fl).join('');
-  return head('Kode',F.length+' skrip · '+Fo.length+' folder')+`<p class="sub" style="margin-top:-8px">Skrip yang namanya sama dengan judul sebuah bagian tersambung otomatis, termasuk bagian yang baru dibuat nanti.</p><div class="row" style="margin-bottom:6px"><button class="pr sm" data-a="ns" data-id="">+ Skrip</button><button class="sm" data-a="nf" data-id="">+ Folder</button><button class="sm" data-a="tab" data-id="gd">Panduan</button></div>`+(F.length||Fo.length?dir(null):empty('Belum ada skrip','Beri skrip nama yang sama dengan judul bagian cerita, maka keduanya tersambung otomatis.'));
+  return head('Kode',F.length+' skrip · '+Fo.length+' folder')+`<p class="sub" style="margin-top:-8px">Skrip yang namanya sama dengan judul sebuah bagian tersambung otomatis, termasuk bagian yang baru dibuat nanti.</p><div class="row" style="margin-bottom:6px"><button class="pr sm" data-a="ns" data-id="">+ Skrip</button><button class="sm" data-a="nf" data-id="">+ Folder</button><button class="sm" data-a="tab" data-id="gd">Panduan</button><button class="sm" data-a="aset">Aset (${Object.keys(daftarAset(s)).length})</button></div>`+(F.length||Fo.length?dir(null):empty('Belum ada skrip','Beri skrip nama yang sama dengan judul bagian cerita, maka keduanya tersambung otomatis.'))+`<p class="sub" style="margin-top:16px">Penyimpanan: <span id="stPersist">${labelPersist()}</span></p>`;
 }
 function sDlg(id,fid,nama){
   const s=S(),nid=id||uid(),f=id?s.files.find(x=>x.id===id):{name:nama||'',folder:fid||null,code:'',lib:false};
@@ -1608,13 +1990,15 @@ function setupSambung(s,pil){
 }
 function pDlg(id,cid){
   const s=S(),p=id?P(s,id):{title:'',content:'',chapter:cid||null,refs:[]};
+  pgbVal=typeof p.gambar==='string'&&p.gambar?p.gambar:null;
   const sk=(s.files||[]).filter(f=>mode(f)==='biasa').map(f=>{const j=jalur(s,f.folder);return `<label class="ck"><input type="checkbox" class="rf" value="${f.id}" ${nm(f.name)===nm(p.title)&&id?'checked disabled':(p.refs||[]).includes(f.id)?'checked':''}>${esc((j?j+'/':'')+f.name)}${nm(f.name)===nm(p.title)&&id?' <span class="mt">otomatis</span>':''}</label>`}).join('');
-  dlg(`<h2>${id?'Ubah bagian':'Bagian baru'}</h2><label>Judul</label><input id="f1" value="${esc(p.title)}"><label>Isi cerita</label><textarea id="f2">${esc(p.content)}</textarea><label>Bab</label><select id="f3">${cOpts(s,p.chapter)}</select><label>Skrip tersambung (jalan saat bagian dibuka)</label>${sk||'<p class="sub">Belum ada skrip. Buat di tab Kode.</p>'}${id&&!(s.files||[]).some(f=>mode(f)==='biasa'&&nm(f.name)===nm(p.title))?`<button class="sm" data-a="mks" data-id="${id}" style="margin-bottom:10px">+ Buat skrip bernama sama</button>`:''}${id?`<div class="row" style="margin:6px 0 10px">${p.start?'':`<button class="sm" data-a="st" data-id="${id}">Jadikan bagian awal</button>`}<button class="sm del" data-a="dp" data-id="${id}">Hapus bagian</button></div>`:''}${btns()}`,()=>{
+  dlg(`<h2>${id?'Ubah bagian':'Bagian baru'}</h2><label>Judul</label><input id="f1" value="${esc(p.title)}"><label>Isi cerita</label><textarea id="f2">${esc(p.content)}</textarea><label>Bab</label><select id="f3">${cOpts(s,p.chapter)}</select><label>Gambar latar</label><div id="pgb"></div><label>Skrip tersambung (jalan saat bagian dibuka)</label>${sk||'<p class="sub">Belum ada skrip. Buat di tab Kode.</p>'}${id&&!(s.files||[]).some(f=>mode(f)==='biasa'&&nm(f.name)===nm(p.title))?`<button class="sm" data-a="mks" data-id="${id}" style="margin-bottom:10px">+ Buat skrip bernama sama</button>`:''}${id?`<div class="row" style="margin:6px 0 10px">${p.start?'':`<button class="sm" data-a="st" data-id="${id}">Jadikan bagian awal</button>`}<button class="sm del" data-a="dp" data-id="${id}">Hapus bagian</button></div>`:''}${btns()}`,()=>{
     const t=$('f1').value.trim();if(!t){$('f1').focus();return false}
     const refs=[...D.querySelectorAll('.rf:checked:not(:disabled)')].map(x=>x.value);
-    if(id){const nc=$('f3').value||null,moved=nc!==(p.chapter||null);Object.assign(p,{title:t,content:$('f2').value,chapter:nc,refs});if(moved&&nc)joinChain(s,p)}
-    else{const np={id:uid(),title:t,content:$('f2').value,chapter:$('f3').value||null,start:!s.passages.length,choices:[],refs,...(pend||{})};pend=null;s.passages.push(np);if(np.chapter)joinChain(s,np)}
+    if(id){const nc=$('f3').value||null,moved=nc!==(p.chapter||null);Object.assign(p,{title:t,content:$('f2').value,chapter:nc,refs});if(pgbVal)p.gambar=pgbVal;else delete p.gambar;if(moved&&nc)joinChain(s,p)}
+    else{const np={id:uid(),title:t,content:$('f2').value,chapter:$('f3').value||null,start:!s.passages.length,choices:[],refs,...(pgbVal?{gambar:pgbVal}:{}),...(pend||{})};pend=null;s.passages.push(np);if(np.chapter)joinChain(s,np)}
   });
+  pgbRender();
 }
 function one(t,v,fn){dlg(`<h2>${t}</h2><label>Judul</label><input id="f1" value="${esc(v)}">${btns()}`,()=>{const x=$('f1').value.trim();if(!x)return false;fn(x)})}
 
@@ -1627,12 +2011,14 @@ document.addEventListener('click',e=>{
     case 'open':eng=null;db.active=id;tab='ed';hist=[];sel=null;break;
     case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
     case 'dels':ask('Hapus cerita ini beserta isinya?',()=>{db.stories=db.stories.filter(x=>x.id!==id);if(db.active===id)db.active=db.stories[0]?.id||null;});go=false;break;
-    case 'exp':{const x=db.stories.find(v=>v.id===id);dlg(`<h2>Ekspor cerita</h2>${DL?`<p class="sub">Pilih bentuk berkas yang akan disimpan.</p><div class="card" data-a="dlh" data-id="${id}" style="cursor:pointer"><h3>Game (.html)</h3><p>Satu berkas yang bisa dimainkan di browser mana pun, tanpa editor. Cocok untuk dibagikan ke pembaca.</p></div><div class="card" data-a="dlj" data-id="${id}" style="cursor:pointer"><h3>Cadangan (.json)</h3><p>Untuk disimpan, atau dimasukkan lagi ke editor ini lewat Impor.</p></div>`:`<p class="sub">Unduh berkas tidak tersedia di tampilan ini. Salin teks cadangan di bawah dan simpan sebagai berkas .json.</p><textarea id="f1" readonly>${esc(JSON.stringify({version:'1.2',story:x},null,1))}</textarea><div class="row" style="justify-content:flex-end"><button data-a="cp">Salin</button></div>`}<div class="row" style="justify-content:flex-end;margin-top:8px"><button data-a="dx">Tutup</button></div>`,null);go=false;break}
-    case 'dlh':case 'dlj':go=false;unduh(id,a==='dlh'?'html':'json');break;
+    case 'exp':{inlineJanji.delete(id);inlineSiap(id);dlg(`<h2>Ekspor cerita</h2><p class="sub">Pilih bentuk berkas yang akan disimpan.</p><div class="card" data-a="dlh" data-id="${id}" style="cursor:pointer"><h3>Game (.html)</h3><p>Game lengkap dengan semua aset. Untuk dibagikan ke pembaca.</p></div><div class="card" data-a="dlj" data-id="${id}" style="cursor:pointer"><h3>Cadangan (.json)</h3><p>Logika cerita saja, tanpa aset. Untuk versioning dan pindah editor.</p></div><p id="dnote" class="sub"></p><div class="row" style="align-items:center;flex-wrap:wrap"><span class="sub" style="margin:0">Tidak terunduh? Lihat teksnya:</span><button class="sm" data-a="fbh" data-id="${id}">.html</button><button class="sm" data-a="fbj" data-id="${id}">.json</button></div><div class="row" style="justify-content:flex-end;margin-top:8px"><button data-a="dx">Tutup</button></div>`,null);go=false;break}
+    case 'dlh':case 'dlj':go=false;if(a==='dlh')inlineSiap(id).then(()=>unduh(id,'html'));else unduh(id,'json');break;
     case 'more':more[id]=true;break;
     case 'demo':{go=false;document.querySelector('[data-a="imp"]').click();$('f1').value=DEMO;window.demoOk=1;document.querySelector('[data-a="ds"]').click();window.demoOk=0;break}
     case 'clip':go=false;navigator.clipboard.readText().then(x=>{$('f1').value=x}).catch(()=>warn('Papan klip tidak bisa dibaca di sini. Tekan lama di kotak lalu pilih Tempel.'));break;
-    case 'cp':$('f1').select();try{navigator.clipboard.writeText($('f1').value)}catch(_){}go=false;break;
+    case 'cp':{const t=$('f1'),v=t.value,ok=()=>catat('Tersalin ke papan klip.'),manual=()=>{t.focus();t.select();t.setSelectionRange(0,v.length);let k=false;try{k=document.execCommand('copy')}catch(_){}catat(k?'Tersalin ke papan klip.':'Teks sudah terpilih. Tekan lama lalu pilih Salin.')};if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(v).then(ok,manual);else manual();go=false;break}
+    case 'fbh':case 'fbj':go=false;(a==='fbh'?inlineSiap(id):Promise.resolve()).then(()=>fallback(id,a==='fbh'?'html':'json','Cara lain jika unduhan tidak berjalan.'));break;
+    case 'fbo':{go=false;const b=siapkan(id,el.dataset.j);if(!b)break;const u=URL.createObjectURL(new Blob([b.data],{type:b.mime==='application/json'?'text/plain':b.mime}));if(!window.open(u,'_blank'))catat('Tab baru diblokir browser. Izinkan pop-up atau pakai Salin.');setTimeout(()=>URL.revokeObjectURL(u),60000);break}
     case 'imp':dlg(`<h2>Impor cerita</h2><label>Pilih berkas .json dari penyimpanan</label><input type="file" id="ff" accept=".json,application/json,text/plain"><label>Atau tempel isi JSON</label><button class="sm" data-a="clip" style="margin:4px 0 8px">Tempel dari papan klip</button><textarea id="f1"></textarea>${btns('Impor')}`,()=>{try{const j=JSON.parse($('f1').value),x=j.story||j;if(!x.passages||!x.title)throw 0;if(!window.demoOk&&(x.passages.some(p=>(p.js||'').trim())||(x.files||[]).some(f=>/^[ \t]*js[ \t]*$/m.test(f.code||'')))&&!window.jsOk){window.jsOk=true;warn('Cerita ini berisi JavaScript yang akan dijalankan di halaman ini. Tekan Impor sekali lagi hanya jika kamu percaya sumbernya.');return false}window.jsOk=false;const m={};x.passages.forEach(p=>m[p.id]=uid());const cm={};(x.chapters||[]).forEach(c=>cm[c.id]=uid());x.id=uid();x.chapters=(x.chapters||[]).map(c=>({id:cm[c.id],title:c.title}));x.passages=x.passages.map(p=>({...p,id:m[p.id],chapter:cm[p.chapter]||null,choices:(p.choices||[]).map(c=>({id:uid(),text:c.text,to:m[c.to]||null,syarat:c.syarat||'',efek:c.efek||''}))}));x.description=x.description||'';migrasi(x);x.author=x.author||'';db.stories.push(x);db.active=x.id}catch(_){warn('JSON tidak valid. Pastikan isinya hasil ekspor dari aplikasi ini.');return false}});go=false;break;
     case 'nc':one('Bab baru','',v=>s.chapters.push({id:uid(),title:v}));go=false;break;
     case 'rc':{const c=s.chapters.find(x=>x.id===id);one('Ganti nama bab',c.title,v=>c.title=v);go=false;break}
@@ -1661,6 +2047,12 @@ document.addEventListener('click',e=>{
     case 'awal':dlg(`<h2>Nilai awal cerita</h2><p class="sub">Satu per baris. Contoh: emas = 0, nyawa = 3, nama = Rani, tas = daftar roti, peta</p><textarea id="f1">${esc(s.awal||'')}</textarea>${btns()}`,()=>{try{parseAwal($('f1').value)}catch(e){warn(e.message);return false}s.awal=$('f1').value});go=false;break;
     case 'sel':sel=sel===id?null:id;break;
     case 'dbg':if(eng)eng.dbg=!eng.dbg;go=false;break;
+    case 'aset':asetDlg();go=false;break;
+    case 'pgb':pgbDaftar();go=false;break;
+    case 'pgp':pgbVal=id;pgbRender();go=false;break;
+    case 'pgx':pgbVal=null;pgbRender();go=false;break;
+    case 'aadd':asetTambah();go=false;break;
+    case 'adel':{go=false;const idc=s.id;ask('Hapus aset "'+id+'"?',async()=>{try{await hapusAset(idc,id)}catch(e){toast('Gagal menghapus aset: '+((e&&e.message)||e))}asetDlg();render()});break}
   }
   if(go){if(!['tab','more'].includes(a))save();render()}
 });
@@ -1669,7 +2061,7 @@ document.addEventListener('change',e=>{
   if(f.size>5e6){warn('Berkas terlalu besar (maksimal 5 MB).');return}
   f.text().then(t=>{const a=$('f1');if(a)a.value=t}).catch(()=>warn('Berkas tidak bisa dibaca. Coba tempel isinya langsung.'));
 });
-db.stories.forEach(migrasi);save();render();
+inisialisasi().then(()=>{db.stories.forEach(migrasi);save();render();if(modeTerbatas)toast('IndexedDB tidak tersedia: mode terbatas. Cerita disimpan di localStorage dan aset belum bisa dipakai.')});
 </script>
 </body>
 </html>
