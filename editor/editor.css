@@ -6,9 +6,32 @@ button.del{color:var(--err);border-color:transparent}
 input,textarea,select{width:100%;font:inherit;background:var(--card);color:var(--t);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:4px 0 12px}
 textarea{min-height:160px}
 label{font-size:13px;font-weight:500;color:var(--t2)}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;border:0;border-radius:0;padding:14px 0;color:var(--t2)}
-nav button.on{color:var(--p);font-weight:700}
+
+/* ─── Ribbon atas (Langkah 1) ───
+   Mobile-first: target sentuh ≥ 44px (standar Apple/Material).
+   Di layar lebih lebar: jarak lebih longgar, dan ribbon sejajar dengan isi (max 680px). */
+nav{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:6px;background:var(--card);border-bottom:1px solid var(--line);padding:6px 8px;padding-top:calc(6px + env(safe-area-inset-top,0px))}
+nav:empty{display:none}
+nav .nav-home{flex:none;min-height:44px;padding:0 12px;border:0;background:none;color:var(--p);font-weight:600;font-size:14px;border-radius:10px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;display:inline-flex;align-items:center;gap:4px}
+nav .nav-home:active{background:var(--p50)}
+nav .nav-tabs{display:flex;flex:1;gap:4px;min-width:0}
+nav .nav-tabs button{flex:1;min-width:0;min-height:44px;padding:0 6px;border:1px solid transparent;background:var(--bg);color:var(--t2);font-size:13px;font-weight:500;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .15s,color .15s}
+nav .nav-tabs button:active{background:var(--line)}
+nav .nav-tabs button.on{background:var(--p);color:#fff;font-weight:600}
+
+/* ≥600px: tablet atau HP landscape. Lebih longgar, tombol sedikit lebih ringkas karena jari tidak lagi satu-satunya input. */
+@media(min-width:600px){
+  nav{gap:10px;padding:8px 16px;padding-top:calc(8px + env(safe-area-inset-top,0px))}
+  nav .nav-home{min-height:40px;padding:0 14px;font-size:15px}
+  nav .nav-tabs{gap:4px;max-width:600px}
+  nav .nav-tabs button{min-height:40px;padding:0 12px;font-size:14px}
+}
+
+/* ≥768px: desktop. Ribbon sejajar dengan isi (main max 680px) supaya tidak melebar ke ujung monitor. */
+@media(min-width:768px){
+  nav{padding-left:max(16px,calc((100vw - 680px)/2));padding-right:max(16px,calc((100vw - 680px)/2))}
+}
+
 .dots{display:flex;gap:6px;align-items:center;margin-top:18px}
 .dots span{height:6px;width:6px;border-radius:3px;background:var(--dot)}
 .dots span.on{width:18px;background:var(--p)}
@@ -29,7 +52,6 @@ nav button.on{color:var(--p);font-weight:700}
 input,textarea,select{border-radius:8px;padding:8px 10px;margin:2px 0 10px}
 textarea{min-height:100px}
 label{font-size:12px}
-nav button{height:48px;font-size:12px;padding:0}
 .mapw{height:66vh;border-radius:10px}
 details{border:1px solid var(--line);border-radius:8px;margin:0 0 10px;padding:0 10px}
 details.card{padding:0 12px;margin-bottom:8px;background:var(--card)}
@@ -60,3 +82,67 @@ details .kd{margin:4px 0 8px}
 .ln{height:auto;padding:0 10px 0 0;border:0;background:none;color:var(--t2);font-size:12px;text-decoration:underline}
 .footer-license{margin:28px 0 0;text-align:center;font-size:11px;color:var(--t2)}
 .footer-license a{color:inherit;text-decoration:underline}
+/* Tab lama yang fixed di bawah sudah pindah ke atas → sisa ruang bawah dihapus. */
+body{padding-bottom:env(safe-area-inset-bottom,0px)!important}
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — CSS sidebar Editor (Langkah 3a)                   ║
+   ║ Tambahkan di akhir editor.css. Tidak menghapus apa pun.  ║
+   ╚══════════════════════════════════════════════════════════╝ */
+.ed-wrap{display:flex;gap:0;margin:0 -16px;min-height:60vh}
+.ed-side{flex:0 0 220px;border-right:1px solid var(--line);background:var(--card);overflow-y:auto;max-height:calc(100vh - 90px);position:sticky;top:calc(57px + env(safe-area-inset-top,0px));align-self:flex-start}
+.sb-title{font-weight:700;font-size:13px;padding:10px 12px 8px;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+.sb-head{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);padding:10px 12px 4px;font-weight:600}
+.sb-item{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;color:var(--t);cursor:pointer;min-height:38px;user-select:none;border:0;background:none;text-align:left;width:100%}
+.sb-item:hover{background:var(--bg)}
+.sb-item.on{background:var(--p50);color:var(--p);font-weight:600}
+.sb-item .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--t2);flex:none}
+.sb-item.on .sb-dot{background:var(--p)}
+.sb-item .sb-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-item .cnt{font-size:10px;color:var(--t2);background:var(--bg);border-radius:6px;padding:1px 6px;line-height:14px;flex:none}
+.sb-item.on .cnt{background:var(--card);color:var(--p)}
+.sb-foot{padding:8px 8px 12px;border-top:1px solid var(--line);margin-top:6px}
+.sb-foot button{width:100%}
+.ed-main{flex:1;min-width:0;padding:0 16px}
+.ed-bar{display:flex;align-items:center;gap:8px;margin:8px 0 12px;min-height:36px}
+.ed-hamb{display:none;flex:none;width:36px;height:36px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:0;font-size:16px;cursor:pointer;color:var(--t)}
+.crumb{display:flex;flex-wrap:wrap;gap:0;align-items:center;font-size:13px;min-width:0}
+.crumb button{border:0;background:none;padding:4px 6px;border-radius:6px;font-size:13px;color:var(--p);cursor:pointer;height:auto;font-weight:500}
+.crumb button:hover{background:var(--p50)}
+.crumb .sep{color:var(--t2);padding:0 2px;font-size:12px}
+.crumb .cur{color:var(--t);font-weight:600;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder-card{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.folder-card:hover{border-color:var(--p200);background:var(--p50)}
+.folder-card:active{opacity:.8}
+.folder-card .fc-icon{font-size:20px;width:28px;text-align:center;flex:none}
+.folder-card .fc-body{flex:1;min-width:0}
+.folder-card .fc-body b{font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+.folder-card .fc-body p{margin:2px 0 0;font-size:12px;color:var(--t2)}
+.folder-card .fc-arrow{color:var(--t2);font-size:18px;flex:none}
+
+@media(max-width:768px){
+  .ed-wrap{margin:0 -16px}
+  .ed-side{position:fixed;left:0;top:0;bottom:0;width:min(280px,82vw);z-index:60;transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 16px rgba(0,0,0,.18);max-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);border-right:1px solid var(--line)}
+  .ed-side.open{transform:translateX(0)}
+  .ed-hamb{display:inline-flex;align-items:center;justify-content:center}
+  .ed-main{padding:0 16px;width:100%}
+}
+/* ╚══════════════════════════════════════════════════════════╝ */
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — Peta fullscreen (Langkah polish peta)             ║
+   ║ Hanya berlaku saat #app punya class "app-map" (tab Peta, ║
+   ║ cerita punya isi). Tab lain tidak terpengaruh.           ║
+   ╚══════════════════════════════════════════════════════════╝ */
+#app.app-map{
+  max-width:none;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  height:calc(100vh - 57px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+}
+#app.app-map .peta-head{display:none}
+#app.app-map .peta-help{display:none}
+#app.app-map .peta-bar{flex:none;padding:6px 12px;margin:0;overflow-x:auto;overflow-y:hidden;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#app.app-map .peta-bar::-webkit-scrollbar{display:none}
+#app.app-map .peta-bar .row{flex-wrap:nowrap;min-width:max-content;gap:6px;margin:0!important}
+#app.app-map .mapw{flex:1;min-height:0;height:auto;border-radius:0;border-left:0;border-right:0;margin:0}
+/* ╚══════════════════════════════════════════════════════════╝ */

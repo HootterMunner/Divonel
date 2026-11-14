@@ -3,7 +3,34 @@
 function link(a,b,t){if(!a.choices.some(c=>c.to===b.id))a.choices.push({id:uid(),text:t,to:b.id})}
 function joinChain(s,p){const l=s.passages.filter(x=>x.chapter===p.chapter&&x!==p).pop();if(l){link(l,p,'Lanjut ke: '+p.title);link(p,l,'Kembali ke: '+l.title)}}
 function chain(s,cid){const ps=s.passages.filter(p=>p.chapter===cid);for(let i=1;i<ps.length;i++){link(ps[i-1],ps[i],'Lanjut ke: '+ps[i].title);link(ps[i],ps[i-1],'Kembali ke: '+ps[i-1].title)}}
-function cOpts(s,cur){return `<option value="">Tanpa bab</option>`+s.chapters.map(c=>`<option value="${c.id}" ${c.id===cur?'selected':''}>${esc(c.title)}</option>`).join('')}
+/* Pilihan bab untuk dialog bagian — hierarki dengan indentasi. */
+function cOpts(s,cur){
+  const opts=[`<option value="">Tanpa bab</option>`];
+  const walk=(pid, level)=>{
+    s.chapters.filter(c=>(c.parent||null)===pid).forEach(c=>{
+      opts.push(`<option value="${c.id}" ${c.id===cur?'selected':''}>${'— '.repeat(level)}${esc(c.title)}</option>`);
+      walk(c.id, level+1);
+    });
+  };
+  walk(null, 0);
+  return opts.join('');
+}
+/* Pilihan induk bab — untuk dialog "Ubah bab". Menyembunyikan diri sendiri dan keturunannya (cegah siklus). */
+function chapterParentOpts(s,selfId,cur){
+  const opts=[`<option value="" ${!cur?'selected':''}>(tanpa induk)</option>`];
+  const block=new Set([selfId]);
+  let berubah=true;
+  while(berubah){berubah=false;s.chapters.forEach(c=>{if(!block.has(c.id)&&c.parent&&block.has(c.parent)){block.add(c.id);berubah=true}})}
+  const walk=(pid, level)=>{
+    s.chapters.filter(c=>(c.parent||null)===pid).forEach(c=>{
+      if(block.has(c.id))return;
+      opts.push(`<option value="${c.id}" ${c.id===cur?'selected':''}>${'— '.repeat(level)}${esc(c.title)}</option>`);
+      walk(c.id, level+1);
+    });
+  };
+  walk(null, 0);
+  return opts.join('');
+}
 function tOpts(s,from,cur){return `<option value="">— ujung buntu —</option>`+s.passages.filter(p=>p.id!==from).map(p=>{const c=s.chapters.find(x=>x.id===p.chapter);return `<option value="${p.id}" ${p.id===cur?'selected':''}>${esc(p.title)}${c?' ('+esc(c.title)+')':''}</option>`}).join('')}
 function rc(s,pid){$('dlg').innerHTML=`<h2>Pilihan cerita</h2><p class="sub">Dari: ${esc(P(s,pid).title)}</p><p class="sub">Syarat: punya kunci, emas >= 10. Efek: emas + 5; ambil kunci (pisahkan dengan ;)</p>`+(tmp.map((c,i)=>`<div class="card"><input class="ct" value="${esc(c.text)}" placeholder="Teks pilihan"><select class="cto">${tOpts(s,pid,c.to)}</select><details${c.syarat||c.efek?' open':''}><summary>Syarat dan efek</summary><input class="cs" value="${esc(c.syarat||'')}" placeholder="Muncul jika… (contoh: punya kunci)"><input class="ce" value="${esc(c.efek||'')}" placeholder="Lalu ubah… (contoh: emas + 5; ambil kunci)"></details><button class="sm del" data-a="rmc" data-id="${i}">Hapus pilihan</button></div>`).join('')||'<p class="sub">Belum ada pilihan.</p>')+`<button class="sm" data-a="addc" style="margin-bottom:14px">Tambah pilihan</button>`+btns()}
 function grab(){const t=[...D.querySelectorAll('.ct')],o=[...D.querySelectorAll('.cto')],cs=[...D.querySelectorAll('.cs')],ce=[...D.querySelectorAll('.ce')];tmp=t.map((x,i)=>({id:tmp[i]?.id||uid(),text:x.value,to:o[i].value||null,syarat:cs[i].value.trim(),efek:ce[i].value.trim()}))}
