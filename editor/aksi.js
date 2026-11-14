@@ -25,6 +25,10 @@ case 'passtep':{
   if(f)f(id==='hapus');
   return true;
 }
+case 'fit':fitView(S());go=false;break;
+case 'resetview':resetView(S());go=false;break;
+case 'cari':dialogCari(S());go=false;break;
+case 'teleport':{D.close();teleportKe(S(), id);return true}
 case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open',laci);go=false;break;
     case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
     case 'dels':ask('Hapus cerita ini beserta isinya?',()=>{db.stories=db.stories.filter(x=>x.id!==id);if(db.active===id)db.active=db.stories[0]?.id||null;});go=false;break;
@@ -79,7 +83,7 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
     case 'st':D.close();s.passages.forEach(p=>p.start=p.id===id);break;
     case 'chn':chain(s,id);break;
     case 'dp':ask('Hapus bagian ini?',()=>{D.close();s.passages=s.passages.filter(p=>p.id!==id);s.passages.forEach(p=>p.choices.forEach(c=>{if(c.to===id)c.to=null}));if(sel===id)sel=null;hist=[]});go=false;break;
-    case 'ch':{cur=id;const p=P(s,id);tmp=p.choices.map(c=>({...c}));rc(s,id);D.showModal&&!D.open&&D.showModal();onSave=()=>{grab();const kn=collectKnown(s),ids=titleIds(s);for(const c of tmp){try{parseSyarat(c.syarat,kn);parseEfek(c.efek,kn,ids)}catch(e){warn(e.message);return false}}p.choices=tmp.map(c=>({...c,text:c.text.trim()||(P(s,c.to)?.title||'')})).filter(c=>c.text)};go=false;break}
+    case 'ch':{cur=id;const p=P(s,id);tmp=p.choices.map(c=>({...c}));recentPush('i', s.id, id);rc(s,id);D.showModal&&!D.open&&D.showModal();onSave=()=>{grab();const kn=collectKnown(s),ids=titleIds(s);for(const c of tmp){try{parseSyarat(c.syarat,kn);parseEfek(c.efek,kn,ids)}catch(e){warn(e.message);return false}}p.choices=tmp.map(c=>({...c,text:c.text.trim()||(P(s,c.to)?.title||'')})).filter(c=>c.text)};go=false;break}
     case 'addc':grab();tmp.push({id:uid(),text:'',to:null});rc(s,cur);go=false;break;
     case 'rmc':grab();tmp.splice(+id,1);rc(s,cur);go=false;break;
     case 'ds':if(onSave&&onSave()===false){go=false;break}D.close();save();render();return;

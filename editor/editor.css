@@ -119,12 +119,25 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)!important}
 .folder-card .fc-body p{margin:2px 0 0;font-size:12px;color:var(--t2)}
 .folder-card .fc-arrow{color:var(--t2);font-size:18px;flex:none}
 
-@media(max-width:768px){
-  .ed-wrap{margin:0 -16px}
-  .ed-side{position:fixed;left:0;top:0;bottom:0;width:min(280px,82vw);z-index:60;transform:translateX(-100%);transition:transform .22s ease;box-shadow:4px 0 16px rgba(0,0,0,.18);max-height:100vh;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);border-right:1px solid var(--line)}
-  .ed-side.open{transform:translateX(0)}
-  .ed-hamb{display:inline-flex;align-items:center;justify-content:center}
-  .ed-main{padding:0 16px;width:100%}
+@media(pointer:coarse){
+  /* Perbesar teks & tombol di semua area (HP mode desktop maupun mobile) */
+  body{font-size:16px}
+  h1{font-size:24px}
+  h2{font-size:18px}
+  .sub{font-size:14px}
+  .card h3{font-size:15px}
+  .card p{font-size:13px}
+  button{min-height:44px;padding:0 16px;font-size:15px}
+  button.sm{min-height:38px;padding:0 12px;font-size:14px}
+  input,textarea,select{font-size:16px;padding:10px 12px}
+  nav .nav-home{min-height:44px;padding:0 16px;font-size:15px}
+  nav .nav-tabs button{min-height:44px;padding:0 12px;font-size:14px}
+  #app.app-map #mtb button{min-height:44px;padding:0 14px;font-size:14px}
+  .peta-crumb button,.peta-crumb .cur{font-size:14px;min-height:36px}
+  .ed-side .sb-item{font-size:14px;min-height:44px}
+  .folder-card{padding:16px}
+  .folder-card .fc-body b{font-size:15px}
+  .folder-card .fc-body p{font-size:13px}
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
 /* ╔══════════════════════════════════════════════════════════╗
@@ -184,3 +197,28 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)!important}
   #app.app-map #mtb button{min-height:36px;padding:0 12px;font-size:12px}
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — Anti-terjebak + hasil cari (Langkah 3f)           ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+/* Hasil pencarian bagian */
+.cres{max-height:40vh;overflow-y:auto;margin:8px 0 16px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.cres-item{display:flex;flex-direction:column;gap:4px;padding:12px;border-bottom:1px solid var(--line);cursor:pointer;min-height:44px;justify-content:center;touch-action:manipulation}
+.cres-item:last-child{border-bottom:0}
+.cres-item:hover{background:var(--bg)}
+.cres-item:active{background:var(--bg)}
+.cres-item b{font-size:15px;font-weight:600;color:var(--t)}
+.cres-item .sub{font-size:13px;color:var(--t2);margin:0}
+/* ╚══════════════════════════════════════════════════════════╝ */
+/* ╔═══ AWAL map-lock: cegah zoom halaman di mode Peta ═══╗
+   Hanya <nav> dan <main> yang dikunci; <dialog> (#dlg)
+   adalah saudara keduanya, jadi popup passage/cari
+   tetap bisa di-pinch-zoom.
+   ═══════════════════════════════════════════════════════ */
+body.map-lock > nav,
+body.map-lock > main{touch-action:pan-x pan-y}
+/* ╚═══ AKHIR map-lock ═══╝ */
+/* ╔═══ AWAL CSS .cres-head ═══╗ */
+.cres-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);padding:10px 12px 4px;font-weight:600;border-top:1px solid var(--line)}
+.cres-head:first-child{border-top:0;padding-top:8px}
+/* ╚═══ AKHIR CSS .cres-head ═══╝ */

@@ -1,6 +1,49 @@
 /* ═══ editor/tampilan.js — tampilan editor ═══
    State UI (tab, sel, more), render(), Pustaka, Editor, Peta, panel debug. */
 let tab='lib',sel=null,hist=[],tmp=[],cur=null;
+
+/* ╔═══ AWAL FUNGSI recentStore (riwayat passage) ═══╗
+   Simpan 12 ID terakhir, tampil 4 di dialogCari.
+   Per-cerita: localStorage "cerita.recent.<storyId>".
+   ═══════════════════════════════════════════════════ */
+let recentCache = { _sid: null, interacted: [], searched: [] };
+function recentKey(sid){ return 'cerita.recent.' + sid; }
+function recentLoad(sid){
+  if(!sid) return;
+  if(recentCache._sid === sid) return;
+  try{
+    const raw = localStorage.getItem(recentKey(sid));
+    if(raw){
+      const j = JSON.parse(raw);
+      recentCache = { _sid: sid,
+        interacted: Array.isArray(j.i)?j.i:[],
+        searched:   Array.isArray(j.s)?j.s:[] };
+      return;
+    }
+  }catch(_){}
+  recentCache = { _sid: sid, interacted: [], searched: [] };
+}
+function recentSave(){
+  if(!recentCache._sid) return;
+  try{ localStorage.setItem(recentKey(recentCache._sid),
+    JSON.stringify({ i: recentCache.interacted, s: recentCache.searched })); }catch(_){}
+}
+function recentPush(kind, sid, pid){
+  if(!sid || !pid) return;
+  recentLoad(sid);
+  const arr = kind==='s' ? recentCache.searched : recentCache.interacted;
+  const i = arr.indexOf(pid);
+  if(i !== -1) arr.splice(i, 1);
+  arr.unshift(pid);
+  if(arr.length > 12) arr.length = 12;
+  recentSave();
+}
+function recentClean(s, list){
+  const ids = new Set(s.passages.map(p => p.id));
+  return list.filter(id => ids.has(id));
+}
+/* ╚═══ AKHIR FUNGSI recentStore ═══╝ */
+
 let edPath=null, laci=false; /* Langkah 3a: folder-bab di Editor */
 let more={};
 const btns=(ok='Simpan')=>`<div class="row" style="justify-content:flex-end"><button data-a="dx">Batal</button><button class="pr" data-a="ds">${ok}</button></div>`;
@@ -18,7 +61,8 @@ function ribbonHTML(){
 function render(){
   $('nav').innerHTML=ribbonHTML();
   const s=S(),app=$('app');
-  app.className = tab==='map' && s && (s.passages.length || s.chapters.length) ? 'app-map' : '';
+  app.className = tab === 'map' && s && (s.passages.length || s.chapters.length) ? 'app-map' : '';
+document.body.classList.toggle('map-lock', app.className === 'app-map');
   app.innerHTML=tab==='gd'?vGuide():tab==='lib'?vLib():!s?head('Belum ada cerita','Pilih atau buat cerita di Pustaka.')+empty('Tidak ada cerita dipilih','',`<button class="pr" data-a="tab" data-id="lib">Ke Pustaka</button>`):tab==='ed'?vEd(s):tab==='map'?vMap(s):tab==='kd'?vKode(s):vPlay(s)+vDbg();
   if(tab==='map')drawMap();
   if(tab==='play')pasangGambar();
@@ -171,9 +215,9 @@ function vMap(s){
   const h=`<div class="peta-head">${head('Peta',esc(s.title))}</div>`;
   if(!s.passages.length && !s.chapters.length)return h+empty('Peta kosong','Buat bagian cerita untuk melihatnya di sini.',`<button class="pr" data-a="mnp">Tambah bagian</button>`);
   const {folders,nodes}=containersAt(s,mapPath);
-  const help=mapPath&&!folders.length&&!nodes.length
-    ?'Folder ini kosong. Tekan + Bagian atau + Sub-bab di atas.'
-    :'Geser latar untuk menggeser peta, seret kotak untuk memindahkan, cubit dua jari untuk zoom, ketuk folder untuk masuk, ketuk dua kali node untuk mengubah isinya.';
+  const help = mapPath && !folders.length && !nodes.length ?
+  'Folder ini kosong. Tekan + Bagian atau + Sub-bab di atas.' :
+  'Geser latar untuk menggeser peta, cubit dua jari untuk zoom, ketuk folder untuk masuk, ketuk dua kali node untuk mengubah isinya. Tersesat? Tekan ⛶ Fit atau 🎯.';
   return h+
     `<div class="peta-crumb-wrap"><div class="peta-crumb">${petaCrumb(s)}</div></div>`+
     `<div class="peta-bar"><div class="row" id="mtb"></div></div>`+
@@ -363,6 +407,7 @@ function drawMap(){
     tb += `<button class="sm pr" data-a="mnp" data-id="${inFolder?mapPath:''}">+ Bagian</button>`;
     tb += inFolder ? `<button class="sm" data-a="ncs" data-id="${mapPath}">+ Sub-bab</button>` : `<button class="sm" data-a="nc">+ Bab</button>`;
     tb += `<button class="sm" data-a="mz" data-id="-">−</button><button class="sm" data-a="mz" data-id="+">+</button><button class="sm" data-a="mz" data-id="0">100%</button><button class="sm" data-a="mlay">Rapikan</button>`;
+tb += `<button class="sm" data-a="fit" title="Muat semua di layar">⛶ Fit</button><button class="sm" data-a="resetview" title="Reset posisi & zoom">🎯</button><button class="sm" data-a="cari" title="Cari bagian">🔍 Cari</button>`;
     tb += `<button class="sm" data-a="selmode">☐ Pilih</button>`;
     if (sel && P(s, sel)) tb += `<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`;
     if (conn) tb += '<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>';
@@ -587,3 +632,143 @@ function hapusTerpilih(s){
       <button class="pr" data-a="passtep" data-id="hapus">Hapus semua</button>
     </div>`,null);
 }
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — Recovery Peta (Langkah 3f)                        ║
+   ║ fitView / resetView / teleportKe / dialogCari            ║
+   ╚══════════════════════════════════════════════════════════╝ */
+function resetView(s){
+  if(!s){view={x:20,y:20,k:1};applyView();return;}
+  if(sel){
+    const c=s.chapters.find(x=>x.id===sel);
+    const p=s.passages.find(x=>x.id===sel);
+    const obj=c||p;
+    if(obj&&obj.x!=null&&obj.y!=null){
+      const r=document.getElementById('msv')?.getBoundingClientRect();
+      if(r){
+        const w=c?160:140,h=c?88:70;
+        view.x=r.width/2-(obj.x+w/2)*view.k;
+        view.y=r.height/2-(obj.y+h/2)*view.k;
+        applyView();return;
+      }
+    }
+  }
+  const {folders,nodes}=containersAt(s,mapPath);
+  const items=[...folders.map(c=>({o:c,w:160,h:88})),...nodes.map(p=>({o:p,w:140,h:70}))].filter(x=>x.o.x!=null&&x.o.y!=null);
+  if(items.length){
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    items.forEach(({o,w,h})=>{minX=Math.min(minX,o.x);minY=Math.min(minY,o.y);maxX=Math.max(maxX,o.x+w);maxY=Math.max(maxY,o.y+h)});
+    const r=document.getElementById('msv')?.getBoundingClientRect();
+    if(r){
+      view.x=r.width/2-((minX+maxX)/2)*view.k;
+      view.y=r.height/2-((minY+maxY)/2)*view.k;
+      applyView();return;
+    }
+  }
+  view={x:20,y:20,k:1};applyView();
+}
+
+function fitView(s){
+  if(!s) return;
+  const {folders, nodes} = containersAt(s, mapPath);
+  const items = [];
+  folders.forEach(c => {if(c.x != null && c.y != null) items.push({x:c.x, y:c.y, w:160, h:88});});
+  nodes.forEach(p => {if(p.x != null && p.y != null) items.push({x:p.x, y:p.y, w:140, h:70});});
+  if(!items.length){resetView();return;}
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  items.forEach(o => {
+    minX=Math.min(minX, o.x); minY=Math.min(minY, o.y);
+    maxX=Math.max(maxX, o.x+o.w); maxY=Math.max(maxY, o.y+o.h);
+  });
+  const r = document.getElementById('msv')?.getBoundingClientRect();
+  if(!r) return;
+  const pad = 24;
+  const w = Math.max(1, maxX-minX);
+  const h = Math.max(1, maxY-minY);
+  const kx = (r.width - pad*2) / w;
+  const ky = (r.height - pad*2) / h;
+  const k = Math.min(1.5, Math.max(0.3, Math.min(kx, ky)));
+  view.k = k;
+  view.x = pad - minX*k;
+  view.y = pad - minY*k;
+  applyView();
+}
+
+function teleportKe(s, passageId){
+  const p = s.passages.find(x => x.id === passageId);
+  if(!p) return;
+  recentPush('s', s.id, passageId);
+  const targetLevel = p.chapter || null;
+  const levelChanged = targetLevel !== mapPath;
+  if(levelChanged){
+    viewPerLevel.set(mapPath || 'root', {...view});
+    mapPath = targetLevel;
+    sel = null;
+    selectMode = false;
+    selectIds.clear();
+    history.pushState({mapPath: targetLevel}, '');
+    view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
+  }
+  tab = 'map';
+eng = null;
+render();
+window.scrollTo(0, 0);
+if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+requestAnimationFrame(() => {
+    const r = document.getElementById('msv')?.getBoundingClientRect();
+    if(!r) return;
+    if(p.x == null || p.y == null){drawMap(); if(p.x == null) return;}
+    const cx = p.x + 70;
+    const cy = p.y + 35;
+    view.x = r.width/2 - cx*view.k;
+    view.y = r.height/2 - cy*view.k;
+    applyView();
+    sel = p.id;
+    drawMap();
+  });
+}
+
+/* ╔═══ AWAL FUNGSI dialogCari (dengan riwayat) ═══╗
+   Kosong → 4 terakhir dibuka + 4 terakhir dicari.
+   Ketik  → hasil cari (perilaku lama).
+   ═══════════════════════════════════════════════ */
+function dialogCari(s){
+  if(!s) return;
+  recentLoad(s.id);
+  dlg(`<h2>Cari bagian</h2>
+    <input id="cfind" placeholder="Ketik judul bagian…" autocomplete="off" spellcheck="false">
+    <div id="cres" class="cres"></div>
+    <div class="row" style="justify-content:flex-end"><button data-a="dx">Tutup</button></div>`, null);
+  const inp = $('cfind'), res = $('cres');
+  if(!inp || !res) return;
+
+  const item = (p, tag) => {
+    const c = s.chapters.find(x => x.id === p.chapter);
+    return `<div class="cres-item" data-a="teleport" data-id="${p.id}"><b>${esc(p.title)}</b><span class="sub">${c?esc(c.title):'tanpa bab'}${tag?' · '+tag:''}</span></div>`;
+  };
+  const renderRes = () => {
+    const q = inp.value.trim().toLowerCase();
+    if(q){
+      const list = s.passages.filter(p => p.title.toLowerCase().includes(q)).slice(0, 40);
+      if(!list.length){ res.innerHTML = '<p class="sub" style="padding:12px;margin:0">Tidak ada hasil.</p>'; return; }
+      res.innerHTML = list.map(p => item(p, '')).join('');
+      return;
+    }
+    const inter  = recentClean(s, recentCache.interacted).slice(0, 4);
+    const search = recentClean(s, recentCache.searched).slice(0, 4);
+    let h = '';
+    if(inter.length){
+      h += `<div class="cres-head">Terakhir dibuka</div>`;
+      h += inter.map(id => { const p = s.passages.find(x => x.id === id); return p ? item(p, '') : ''; }).join('');
+    }
+    if(search.length){
+      h += `<div class="cres-head">Terakhir dicari</div>`;
+      h += search.map(id => { const p = s.passages.find(x => x.id === id); return p ? item(p, 'dicari') : ''; }).join('');
+    }
+    if(!h) h = '<p class="sub" style="padding:12px;margin:0">Belum ada riwayat. Ketik judul bagian untuk mencari.</p>';
+    res.innerHTML = h;
+  };
+  inp.addEventListener('input', renderRes);
+  inp.focus();
+  renderRes();
+}
+/* ╚═══ AKHIR FUNGSI dialogCari ═══╝ */

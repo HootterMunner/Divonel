@@ -81,6 +81,7 @@ function setupSambung(s,pil){
 }
 function pDlg(id,cid){
   const s=S(),p=id?P(s,id):{title:'',content:'',chapter:cid||null,refs:[]};
+  if(id) recentPush('i', s.id, id);
   pgbVal=typeof p.gambar==='string'&&p.gambar?p.gambar:null;
   const sk=(s.files||[]).filter(f=>mode(f)==='biasa').map(f=>{const j=jalur(s,f.folder);return `<label class="ck"><input type="checkbox" class="rf" value="${f.id}" ${nm(f.name)===nm(p.title)&&id?'checked disabled':(p.refs||[]).includes(f.id)?'checked':''}>${esc((j?j+'/':'')+f.name)}${nm(f.name)===nm(p.title)&&id?' <span class="mt">otomatis</span>':''}</label>`}).join('');
   dlg(`<h2>${id?'Ubah bagian':'Bagian baru'}</h2><label>Judul</label><input id="f1" value="${esc(p.title)}"><label>Isi cerita</label><textarea id="f2">${esc(p.content)}</textarea><label>Bab</label><select id="f3">${cOpts(s,p.chapter)}</select><label>Gambar latar</label><div id="pgb"></div><label>Skrip tersambung (jalan saat bagian dibuka)</label>${sk||'<p class="sub">Belum ada skrip. Buat di tab Kode.</p>'}${id&&!(s.files||[]).some(f=>mode(f)==='biasa'&&nm(f.name)===nm(p.title))?`<button class="sm" data-a="mks" data-id="${id}" style="margin-bottom:10px">+ Buat skrip bernama sama</button>`:''}${id?`<div class="row" style="margin:6px 0 10px">${p.start?'':`<button class="sm" data-a="st" data-id="${id}">Jadikan bagian awal</button>`}<button class="sm del" data-a="dp" data-id="${id}">Hapus bagian</button></div>`:''}${btns()}`,()=>{
