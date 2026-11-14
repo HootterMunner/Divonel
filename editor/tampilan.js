@@ -217,10 +217,35 @@ function petaCrumb(s){
 function masukFolder(s, cid){
   const newPath = cid || null;
   if (newPath === mapPath) return;
+  if (newPath && !s.chapters.find(c => c.id === newPath)) return;
   viewPerLevel.set(mapPath || 'root', {...view});
   mapPath = newPath;
   view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
   sel = null;
+  /* Langkah 3d: dorong history supaya tombol Back browser naik satu level, bukan keluar. */
+  history.pushState({mapPath: newPath}, '');
+}
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ findFreeSpot — cari posisi kosong di level peta (3d)     ║
+   ║ Dipakai oleh drawMap, case 'mnp', case 'ncs' agar        ║
+   ║ node/folder baru tidak menumpuk dengan yang sudah ada.   ║
+   ╚══════════════════════════════════════════════════════════╝ */
+function findFreeSpot(s, level, preferX, preferY){
+  let x = preferX, y = preferY, tries = 0;
+  const used = () => {
+    const all = [
+      ...s.chapters.filter(c => (c.parent || null) === level && c.x != null && c.y != null),
+      ...s.passages.filter(p => (p.chapter || null) === level && p.x != null && p.y != null)
+    ];
+    return all.some(o => Math.abs(o.x - x) < 180 && Math.abs(o.y - y) < 100);
+  };
+  while (used() && tries < 60) {
+    y += 110;
+    if (tries % 5 === 4) { y = preferY; x += 200; }
+    tries++;
+  }
+  return {x, y};
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
 /* ╔══════════════════════════════════════════════════════════╗
@@ -295,9 +320,18 @@ function drawMap(){
 
   const {folders, nodes} = containersAt(s, mapPath);
 
-  folders.forEach((c,i) => {if(c.x==null||c.y==null){c.x=30+(i%3)*220;c.y=30+Math.floor(i/3)*140}});
-  const yOffset = folders.length ? Math.ceil(folders.length/3)*140 : 0;
-  nodes.forEach((p,i) => {if(p.x==null||p.y==null){p.x=30+(i%3)*200;p.y=30+Math.floor(i/3)*120+yOffset}});
+  folders.forEach((c,i) => {
+    if(c.x==null||c.y==null){
+      const spot = findFreeSpot(s, mapPath, 30+(i%3)*220, 30+Math.floor(i/3)*140);
+      c.x = spot.x; c.y = spot.y;
+    }
+  });
+  nodes.forEach((p,i) => {
+    if(p.x==null||p.y==null){
+      const spot = findFreeSpot(s, mapPath, 30+(i%3)*200, 30+Math.floor(i/3)*120);
+      p.x = spot.x; p.y = spot.y;
+    }
+  });
 
   let n='';
   folders.forEach(c => {
@@ -392,6 +426,21 @@ document.addEventListener('touchmove',e=>{
 },{passive:false});
 document.addEventListener('touchend',e=>{if(e.touches.length<2)pinch=null},{passive:true});
 document.addEventListener('touchcancel',()=>{pinch=null},{passive:true});
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ popstate — tombol Back browser untuk navigasi folder (3d)║
+   ║ Setiap masukFolder pushState; Back = naik satu level.    ║
+   ╚══════════════════════════════════════════════════════════╝ */
+window.addEventListener('popstate', e => {
+  const target = (e.state && 'mapPath' in e.state) ? e.state.mapPath : null;
+  if (target === mapPath) return;
+  const s = S();
+  if (!s) return;
+  viewPerLevel.set(mapPath || 'root', {...view});
+  mapPath = target;
+  view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
+  sel = null;
+  if (tab === 'map') render();
+});
 /* ╚══════════════════════════════════════════════════════════╝ */
 
 function vDbg(){

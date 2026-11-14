@@ -23,14 +23,30 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
     case 'pilihsumber':go=false;pilihSumber();break;
     case 'imp':dlg(`<h2>Impor cerita</h2><label>Pilih berkas .json dari penyimpanan</label><input type="file" id="ff" accept=".json,application/json,text/plain"><label>Atau tempel isi JSON</label><button class="sm" data-a="clip" style="margin:4px 0 8px">Tempel dari papan klip</button><textarea id="f1"></textarea>${btns('Impor')}`,()=>{try{const j=JSON.parse($('f1').value),x=j.story||j;if(!x.passages||!x.title)throw 0;if(!window.demoOk&&(x.passages.some(p=>(p.js||'').trim())||(x.files||[]).some(f=>/^[ \t]*js[ \t]*$/m.test(f.code||'')))&&!window.jsOk){window.jsOk=true;warn('Cerita ini berisi JavaScript yang akan dijalankan di halaman ini. Tekan Impor sekali lagi hanya jika kamu percaya sumbernya.');return false}window.jsOk=false;const m={};x.passages.forEach(p=>m[p.id]=uid());const cm={};(x.chapters||[]).forEach(c=>cm[c.id]=uid());x.id=uid();x.chapters=(x.chapters||[]).map(c=>({id:cm[c.id],title:c.title,parent:c.parent?cm[c.parent]||null:null}));x.passages=x.passages.map(p=>({...p,id:m[p.id],chapter:cm[p.chapter]||null,choices:(p.choices||[]).map(c=>({id:uid(),text:c.text,to:m[c.to]||null,syarat:c.syarat||'',efek:c.efek||''}))}));x.description=x.description||'';migrasi(x);x.author=x.author||'';db.stories.push(x);db.active=x.id}catch(_){warn('JSON tidak valid. Pastikan isinya hasil ekspor dari aplikasi ini.');return false}});go=false;break;
     case 'nc':one('Bab baru','',v=>s.chapters.push({id:uid(),title:v,parent:null}));go=false;break;
-    case 'ncs':one('Sub-bab baru','',v=>{if(!s.chapters.find(x=>x.id===id))return;s.chapters.push({id:uid(),title:v,parent:id})});go=false;break;
+    case 'ncs':one('Sub-bab baru','',v=>{
+  if(!s.chapters.find(x=>x.id===id))return;
+  const spot=findFreeSpot(s, id, 30, 30);
+  s.chapters.push({id:uid(),title:v,parent:id,x:spot.x,y:spot.y});
+});go=false;break;
     case 'rc':{const c=s.chapters.find(x=>x.id===id);if(!c){go=false;break}
       dlg(`<h2>Ubah bab</h2><label>Nama</label><input id="f1" value="${esc(c.title)}"><label>Induk bab</label><select id="f2">${chapterParentOpts(s,c.id,c.parent||'')}</select>${btns()}`,
         ()=>{const t=$('f1').value.trim();if(!t){$('f1').focus();return false}c.title=t;c.parent=$('f2').value||null});
       go=false;break}
     case 'dc':ask('Hapus bab ini? Sub-bab di dalamnya dipindah ke induknya, bagian di dalamnya menjadi tanpa bab.',()=>{const c=s.chapters.find(x=>x.id===id),parent=c?c.parent:null;s.chapters.forEach(x=>{if(x.parent===id)x.parent=parent});s.passages.forEach(p=>{if(p.chapter===id)p.chapter=null});s.chapters=s.chapters.filter(x=>x.id!==id);if(edPath===id)edPath=parent||null});go=false;break;
     case 'np':pend=null;pDlg(null,id||null);go=false;break;
-    case 'mnp':{const r=$('msv')?.getBoundingClientRect();pend=r?{x:Math.round((r.width/2-view.x)/view.k-70),y:Math.round((r.height/2-view.y)/view.k-35)}:null;pDlg(null,null);go=false;break}
+    case 'mnp':{
+  const s0=S();let px=null,py=null;
+  const r=$('msv')?.getBoundingClientRect();
+  if(r && s0){
+    const cx=Math.round((r.width/2-view.x)/view.k-70);
+    const cy=Math.round((r.height/2-view.y)/view.k-35);
+    const spot=findFreeSpot(s0, mapPath, cx, cy);
+    px=spot.x;py=spot.y;
+  }
+  pend=(px!=null)?{x:px,y:py}:null;
+  pDlg(null, id||null);
+  go=false;break
+}
     case 'mz':{const r=$('msv').getBoundingClientRect();if(id==='0'){view={x:20,y:20,k:1};applyView()}else zoom(id==='+'?1.25:.8,r.width/2,r.height/2);go=false;break}
     case 'mconn':conn=!conn;go=false;drawMap();break;
     case 'mlay':{
