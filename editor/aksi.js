@@ -9,6 +9,22 @@ document.addEventListener('click',e=>{
     case 'open':eng=null;db.active=id;tab='ed';hist=[];sel=null;edPath=null;laci=false;break;
     case 'edpath':edPath=id||null;laci=false;break;
     case 'mapnav':masukFolder(S(), id||null);break;
+    case 'selmode':selectMode=!selectMode;if(!selectMode)selectIds.clear();sel=null;conn=false;go=false;drawMap();break;
+case 'selall':{
+  const s2=S();
+  if(s2){
+    const {folders,nodes}=containersAt(s2,mapPath);
+    selectIds=new Set([...folders.map(c=>c.id),...nodes.map(p=>p.id)]);
+  }
+  go=false;drawMap();break;
+}
+case 'seldel':hapusTerpilih(S());go=false;break;
+case 'passtep':{
+  const f=hapusLanjut;hapusLanjut=null;
+  D.close();
+  if(f)f(id==='hapus');
+  return true;
+}
 case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open',laci);go=false;break;
     case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
     case 'dels':ask('Hapus cerita ini beserta isinya?',()=>{db.stories=db.stories.filter(x=>x.id!==id);if(db.active===id)db.active=db.stories[0]?.id||null;});go=false;break;

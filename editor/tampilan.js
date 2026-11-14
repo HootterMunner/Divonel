@@ -165,6 +165,7 @@ function vEd(s){
 /* ╚══════════════════════════════════════════════════════════╝ */
 
 let view={x:20,y:20,k:1},drag=null,conn=false,pend=null,lastTap={},pinch=null,mapPath=null;
+let selectMode=false, selectIds=new Set(), hapusLanjut=null;
 const viewPerLevel=new Map();
 function vMap(s){
   const h=`<div class="peta-head">${head('Peta',esc(s.title))}</div>`;
@@ -176,7 +177,7 @@ function vMap(s){
   return h+
     `<div class="peta-crumb-wrap"><div class="peta-crumb">${petaCrumb(s)}</div></div>`+
     `<div class="peta-bar"><div class="row" id="mtb"></div></div>`+
-    `<div class="mapw"><svg id="msv"><defs><pattern id="gr" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" style="fill:var(--line)"/></pattern><marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A3A3A3"/></marker><marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3B82F6"/></marker></defs><rect width="100%" height="100%" fill="url(#gr)"/><g id="mg"><g id="eg"></g><g id="ng"></g></g></svg></div>`+
+    `<div class="mapw"><svg id="msv"><defs><pattern id="gr" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" style="fill:var(--line)"/></pattern><marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A3A3A3"/></marker><marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3B82F6"/></marker></defs><rect width="100%" height="100%" fill="url(#gr)"/><g id="mg"><g id="eg"></g><g id="ng"></g></g><rect id="srect" class="selrect" x="0" y="0" width="0" height="0" visibility="hidden"/></svg></div>`+
     `<p class="peta-help sub" style="margin-top:8px">${help}</p>`;
 }
 
@@ -222,8 +223,10 @@ function masukFolder(s, cid){
   mapPath = newPath;
   view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
   sel = null;
-  /* Langkah 3d: dorong history supaya tombol Back browser naik satu level, bukan keluar. */
-  history.pushState({mapPath: newPath}, '');
+selectMode = false;
+selectIds.clear();
+/* Langkah 3d: dorong history supaya tombol Back browser naik satu level, bukan keluar. */
+history.pushState({ mapPath: newPath }, '');
 }
 
 /* ╔══════════════════════════════════════════════════════════╗
@@ -338,30 +341,48 @@ function drawMap(){
     const ps = s.passages.filter(p => p.chapter === c.id).length;
     const sub = s.chapters.filter(x => x.parent === c.id).length;
     const t = c.title.length > 14 ? c.title.slice(0,13)+'…' : c.title;
-    n += `<g class="nd folder${sel===c.id?' on':''}" data-id="${c.id}" transform="translate(${c.x} ${c.y})"><rect width="160" height="88" rx="14"/><text x="14" y="46" style="font-size:22px">📁</text><text x="46" y="30" class="t1">${esc(t)}</text><text x="46" y="52" class="t2">${ps} bagian${sub?` · ${sub} sub`:''}</text></g>`;
+    n += `<g class="nd folder${sel===c.id?' on':''}${selectIds.has(c.id)?' sel':''}" data-id="${c.id}" transform="translate(${c.x} ${c.y})"><rect width="160" height="88" rx="14"/><text x="14" y="46" style="font-size:22px">📁</text><text x="46" y="30" class="t1">${esc(t)}</text><text x="46" y="52" class="t2">${ps} bagian${sub?` · ${sub} sub`:''}</text></g>`;
   });
   nodes.forEach(p => {
     const inn = s.passages.reduce((k,x) => k + x.choices.filter(c => c.to === p.id).length, 0);
     const t = p.title.length > 17 ? p.title.slice(0,16)+'…' : p.title;
-    n += `<g class="nd${p.start?' st':''}${sel===p.id?' on':''}" data-id="${p.id}" transform="translate(${p.x} ${p.y})"><rect width="140" height="70" rx="12"/><text x="12" y="30" class="t1">${esc(t)}</text><text x="12" y="52" class="t2">${p.choices.length} keluar · ${inn} masuk</text>${p.start?'<text x="118" y="18" class="stt">★</text>':''}</g>`;
+    n += `<g class="nd${p.start?' st':''}${sel===p.id?' on':''}${selectIds.has(p.id)?' sel':''}" data-id="${p.id}" transform="translate(${p.x} ${p.y})"><rect width="140" height="70" rx="12"/><text x="12" y="30" class="t1">${esc(t)}</text><text x="12" y="52" class="t2">${p.choices.length} keluar · ${inn} masuk</text>${p.start?'<text x="118" y="18" class="stt">★</text>':''}</g>`;
   });
 
   $('eg').innerHTML = edgesHTML(s, mapPath);
   $('ng').innerHTML = n;
   applyView();
 
-  const inFolder = mapPath !== null;
-  let tb = `<button class="sm pr" data-a="mnp" data-id="${inFolder?mapPath:''}">+ Bagian</button>`;
-  tb += inFolder ? `<button class="sm" data-a="ncs" data-id="${mapPath}">+ Sub-bab</button>` : `<button class="sm" data-a="nc">+ Bab</button>`;
-  tb += `<button class="sm" data-a="mz" data-id="-">−</button><button class="sm" data-a="mz" data-id="+">+</button><button class="sm" data-a="mz" data-id="0">100%</button><button class="sm" data-a="mlay">Rapikan</button>`;
-  if (sel && P(s, sel)) tb += `<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`;
-  if (conn) tb += '<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>';
+  let tb = '';
+  if (selectMode) {
+    tb += `<button class="sm" data-a="selmode">✕ Batal</button>`;
+    tb += `<button class="sm" data-a="selall">Pilih Semua</button>`;
+    if (selectIds.size > 0) tb += `<button class="sm del" data-a="seldel">Hapus (${selectIds.size})</button>`;
+  } else {
+    const inFolder = mapPath !== null;
+    tb += `<button class="sm pr" data-a="mnp" data-id="${inFolder?mapPath:''}">+ Bagian</button>`;
+    tb += inFolder ? `<button class="sm" data-a="ncs" data-id="${mapPath}">+ Sub-bab</button>` : `<button class="sm" data-a="nc">+ Bab</button>`;
+    tb += `<button class="sm" data-a="mz" data-id="-">−</button><button class="sm" data-a="mz" data-id="+">+</button><button class="sm" data-a="mz" data-id="0">100%</button><button class="sm" data-a="mlay">Rapikan</button>`;
+    tb += `<button class="sm" data-a="selmode">☐ Pilih</button>`;
+    if (sel && P(s, sel)) tb += `<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`;
+    if (conn) tb += '<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>';
+  }
   $('mtb').innerHTML = tb;
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
 function zoom(f,cx,cy){const k=Math.min(2.5,Math.max(.3,view.k*f));view.x=cx-(cx-view.x)*k/view.k;view.y=cy-(cy-view.y)*k/view.k;view.k=k;applyView()}
 $('app').addEventListener('pointerdown',e=>{
   const sv=e.target.closest('#msv');if(!sv)return;
+  /* Langkah 3e: mode seleksi — drag di node = pan, drag di kosong = kotak seleksi */
+  if(selectMode){
+    const r=sv.getBoundingClientRect();
+    drag={sx:e.clientX,sy:e.clientY,moved:false,mode:'select',
+          hitStart:e.target.closest('.nd'),
+          vx:view.x,vy:view.y,
+          rectX0:e.clientX-r.left,rectY0:e.clientY-r.top};
+    try{sv.setPointerCapture(e.pointerId)}catch(_){}
+    return;
+  }
   const g=e.target.closest('.nd');
   let jenis=null,obj=null;
   if(g){
@@ -375,6 +396,21 @@ $('app').addEventListener('pointerdown',e=>{
 $('app').addEventListener('pointermove',e=>{
   if(pinch||!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
   if(!drag.moved&&Math.hypot(dx,dy)<5)return;drag.moved=true;
+  if(drag.mode==='select'){
+    if(drag.hitStart){
+      view.x=drag.vx+dx;view.y=drag.vy+dy;applyView();
+    }else{
+      const sv=document.getElementById('msv');if(!sv)return;
+      const r=sv.getBoundingClientRect();
+      const x=e.clientX-r.left,y=e.clientY-r.top;
+      const rx=Math.min(drag.rectX0,x),ry=Math.min(drag.rectY0,y);
+      const rw=Math.abs(x-drag.rectX0),rh=Math.abs(y-drag.rectY0);
+      drag.rectX=rx;drag.rectY=ry;drag.rectW=rw;drag.rectH=rh;
+      const srect=document.getElementById('srect');
+      if(srect){srect.setAttribute('x',rx);srect.setAttribute('y',ry);srect.setAttribute('width',rw);srect.setAttribute('height',rh);srect.setAttribute('visibility','visible')}
+    }
+    return;
+  }
   if(drag.id&&drag.obj){
     drag.obj.x=Math.round(drag.px+dx/view.k);
     drag.obj.y=Math.round(drag.py+dy/view.k);
@@ -384,8 +420,35 @@ $('app').addEventListener('pointermove',e=>{
   }
   else{view.x=drag.vx+dx;view.y=drag.vy+dy;applyView()}
 });
-$('app').addEventListener('pointerup',()=>{
+$('app').addEventListener('pointerup',e=>{
   if(!drag)return;const d=drag;drag=null;const s=S();
+  if(d.mode==='select'){
+    if(!d.moved){
+      if(d.hitStart){
+        const id=d.hitStart.dataset.id;
+        if(selectIds.has(id))selectIds.delete(id);else selectIds.add(id);
+      }else selectIds.clear();
+    }else if(!d.hitStart && d.rectW!=null){
+      const rx=d.rectX,ry=d.rectY,rw=d.rectW,rh=d.rectH;
+      const hit=(ox,oy,ow,oh)=>!(ox+ow<rx||ox>rx+rw||oy+oh<ry||oy>ry+rh);
+      const {folders,nodes}=containersAt(s,mapPath);
+      if(!e.shiftKey)selectIds.clear();
+      folders.forEach(c=>{
+        if(c.x==null||c.y==null)return;
+        const ox=c.x*view.k+view.x,oy=c.y*view.k+view.y;
+        if(hit(ox,oy,160*view.k,88*view.k))selectIds.add(c.id);
+      });
+      nodes.forEach(p=>{
+        if(p.x==null||p.y==null)return;
+        const ox=p.x*view.k+view.x,oy=p.y*view.k+view.y;
+        if(hit(ox,oy,140*view.k,70*view.k))selectIds.add(p.id);
+      });
+    }
+    const srect=document.getElementById('srect');
+    if(srect){srect.setAttribute('visibility','hidden');srect.setAttribute('width','0');srect.setAttribute('height','0')}
+    drawMap();
+    return;
+  }
   if(d.moved){
     if(d.id){if(d.jenis==='folder'){save();drawMap()}else{sel=d.id;save();drawMap()}}
     return;
@@ -448,4 +511,79 @@ function vDbg(){
   let pot;try{pot=JSON.stringify(eng.inti.status.potret(),null,1)}catch(e){pot='(state tidak bisa dibaca: '+e.message+')'}
   const info=eng.autoKB?`Autosave terakhir: ${(eng.autoKB/1024).toFixed(1)} KB (batas ${AUTO_MAX/1024} KB)`:'Autosave belum ditulis';
   return `<details class="card" id="dbg"${eng.dbg?' open':''}><summary data-a="dbg">Debug: state permainan</summary>${eng.autoWarn?`<p class="err">${esc(eng.autoWarn)}</p>`:''}<p class="sub" style="margin:0 0 6px">${info}</p><pre class="kd" style="max-height:260px;overflow:auto;font-size:11px">${esc(pot)}</pre></details>`;
+}
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ hapusTerpilih — hapus massal dengan konfirmasi 2 tahap   ║
+   ║ Dipanggil dari case 'seldel' di aksi.js.                 ║
+   ╚══════════════════════════════════════════════════════════╝ */
+function hapusTerpilih(s){
+  if(!s||!selectIds.size)return;
+  const ids=[...selectIds];
+  const chapters=s.chapters.filter(c=>ids.includes(c.id));
+  const rootChapters=chapters.filter(c=>!ids.includes(c.parent));
+  const subtrees=new Set();
+  const addSubtree=cid=>{subtrees.add(cid);s.chapters.filter(c=>c.parent===cid).forEach(c=>addSubtree(c.id))};
+  rootChapters.forEach(c=>addSubtree(c.id));
+
+  const passagesInChapters=s.passages.filter(p=>subtrees.has(p.chapter));
+  const extraPassages=s.passages.filter(p=>ids.includes(p.id)&&!subtrees.has(p.chapter));
+  const totalChapters=subtrees.size;
+  const totalSubChapters=totalChapters-rootChapters.length;
+  const parentOf=cid=>{const c=s.chapters.find(x=>x.id===cid);return c?(c.parent||null):null};
+
+  const doDelete=(deleteChapterPassages)=>{
+    const passagesToDelete=new Set(extraPassages.map(p=>p.id));
+    if(deleteChapterPassages){
+      passagesInChapters.forEach(p=>passagesToDelete.add(p.id));
+    } else {
+      passagesInChapters.forEach(p=>{
+        const findRoot=cid=>{
+          if(rootChapters.find(c=>c.id===cid))return cid;
+          const c=s.chapters.find(x=>x.id===cid);
+          return c&&c.parent?findRoot(c.parent):null;
+        };
+        const root=findRoot(p.chapter);
+        p.chapter=root?parentOf(root):null;
+      });
+    }
+    s.chapters=s.chapters.filter(c=>!subtrees.has(c.id));
+    s.passages=s.passages.filter(p=>!passagesToDelete.has(p.id));
+    s.passages.forEach(p=>p.choices&&p.choices.forEach(ch=>{
+      if(ch.to&&passagesToDelete.has(ch.to))ch.to=null;
+    }));
+    if(mapPath&&subtrees.has(mapPath))mapPath=parentOf(mapPath)||null;
+    selectIds.clear();
+    selectMode=false;
+  };
+
+  if(totalChapters===0){
+    ask(`Hapus ${extraPassages.length} bagian?`,()=>{doDelete(false);save();render()});
+    return;
+  }
+  if(passagesInChapters.length===0){
+    let msg=`Hapus ${totalChapters} bab`;
+    if(totalSubChapters>0)msg+=` (termasuk ${totalSubChapters} sub-bab)`;
+    if(extraPassages.length>0)msg+=` dan ${extraPassages.length} bagian`;
+    msg+='?';
+    ask(msg,()=>{doDelete(false);save();render()});
+    return;
+  }
+  const step2=(hapusPassage)=>{
+    const akanHapus=hapusPassage?passagesInChapters.length+extraPassages.length:extraPassages.length;
+    let msg=`Hapus ${totalChapters} bab`;
+    if(totalSubChapters>0)msg+=` (termasuk ${totalSubChapters} sub-bab)`;
+    if(akanHapus>0)msg+=` dan ${akanHapus} bagian`;
+    msg+='?';
+    if(!hapusPassage)msg+=` (Bagian di dalam bab dipindah ke bab induknya.)`;
+    ask(msg,()=>{doDelete(hapusPassage);save();render()});
+  };
+  hapusLanjut=step2;
+  dlg(`<h2>Hapus bab</h2>
+    <p class="sub">Ada ${passagesInChapters.length} bagian di dalam ${totalChapters} bab yang akan dihapus.</p>
+    <p class="sub">Hapus juga bagian-bagian itu, atau pindahkan ke bab induknya?</p>
+    <div class="row" style="justify-content:flex-end;flex-wrap:wrap;margin-top:14px;gap:8px">
+      <button data-a="dx">Batal</button>
+      <button data-a="passtep" data-id="pindah">Pindah ke induk</button>
+      <button class="pr" data-a="passtep" data-id="hapus">Hapus semua</button>
+    </div>`,null);
 }
