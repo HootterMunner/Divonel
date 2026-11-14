@@ -164,12 +164,65 @@ function vEd(s){
 /* ╚══════════════════════════════════════════════════════════╝ */
 /* ╚══════════════════════════════════════════════════════════╝ */
 
-let view={x:20,y:20,k:1},drag=null,conn=false,pend=null,lastTap={},pinch=null;
-function vMap(s) {
-  const h = `<div class="peta-head">${head('Peta',esc(s.title))}</div>`;
-  if (!s.passages.length && !s.chapters.length) return h + empty('Peta kosong', 'Buat bagian cerita untuk melihatnya di sini.', `<button class="pr" data-a="mnp">Tambah bagian</button>`);
-  return h + `<div class="peta-bar"><div class="row" id="mtb"></div></div><div class="mapw"><svg id="msv"><defs><pattern id="gr" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" style="fill:var(--line)"/></pattern><marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A3A3A3"/></marker><marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3B82F6"/></marker></defs><rect width="100%" height="100%" fill="url(#gr)"/><g id="mg"><g id="eg"></g><g id="ng"></g></g></svg></div><p class="peta-help sub" style="margin-top:8px">Geser latar untuk menggeser peta, seret kotak untuk memindahkan, cubit dua jari untuk zoom, ketuk dua kali untuk mengubah isinya.</p>`;
+let view={x:20,y:20,k:1},drag=null,conn=false,pend=null,lastTap={},pinch=null,mapPath=null;
+const viewPerLevel=new Map();
+function vMap(s){
+  const h=`<div class="peta-head">${head('Peta',esc(s.title))}</div>`;
+  if(!s.passages.length && !s.chapters.length)return h+empty('Peta kosong','Buat bagian cerita untuk melihatnya di sini.',`<button class="pr" data-a="mnp">Tambah bagian</button>`);
+  const {folders,nodes}=containersAt(s,mapPath);
+  const help=mapPath&&!folders.length&&!nodes.length
+    ?'Folder ini kosong. Tekan + Bagian atau + Sub-bab di atas.'
+    :'Geser latar untuk menggeser peta, seret kotak untuk memindahkan, cubit dua jari untuk zoom, ketuk folder untuk masuk, ketuk dua kali node untuk mengubah isinya.';
+  return h+
+    `<div class="peta-crumb-wrap"><div class="peta-crumb">${petaCrumb(s)}</div></div>`+
+    `<div class="peta-bar"><div class="row" id="mtb"></div></div>`+
+    `<div class="mapw"><svg id="msv"><defs><pattern id="gr" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" style="fill:var(--line)"/></pattern><marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#A3A3A3"/></marker><marker id="mb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="11" markerHeight="11" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" fill="#3B82F6"/></marker></defs><rect width="100%" height="100%" fill="url(#gr)"/><g id="mg"><g id="eg"></g><g id="ng"></g></g></svg></div>`+
+    `<p class="peta-help sub" style="margin-top:8px">${help}</p>`;
 }
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — Helper navigasi Peta folder (Langkah 3c)          ║
+   ║ Letak: tepat setelah function vMap                       ║
+   ╚══════════════════════════════════════════════════════════╝ */
+function containersAt(s, level){
+  if (level === null || level === undefined) {
+    return {folders: s.chapters.filter(c => !(c.parent || null)), nodes: s.passages.filter(p => !(p.chapter || null))};
+  }
+  return {folders: s.chapters.filter(c => (c.parent || null) === level), nodes: s.passages.filter(p => (p.chapter || null) === level)};
+}
+
+function containerOf(s, p, level){
+  if (level !== null && level !== undefined && p.chapter === level) return p.id;
+  return p.chapter || p.id;
+}
+
+function petaCrumb(s){
+  const path = [];
+  let cur = mapPath;
+  while (cur) {
+    const c = s.chapters.find(x => x.id === cur);
+    if (!c) break;
+    path.unshift({id: c.id, title: c.title});
+    cur = c.parent || null;
+  }
+  let h = `<button data-a="mapnav" data-id="">Peta</button>`;
+  path.forEach((c, i) => {
+    h += `<span class="sep">/</span>`;
+    if (i < path.length - 1) h += `<button data-a="mapnav" data-id="${c.id}">${esc(c.title)}</button>`;
+    else h += `<span class="cur">${esc(c.title)}</span>`;
+  });
+  return h;
+}
+
+function masukFolder(s, cid){
+  const newPath = cid || null;
+  if (newPath === mapPath) return;
+  viewPerLevel.set(mapPath || 'root', {...view});
+  mapPath = newPath;
+  view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
+  sel = null;
+}
+/* ╚══════════════════════════════════════════════════════════╝ */
 /* ╔══════════════════════════════════════════════════════════╗
    ║ AWAL — Peta folder-bab (Langkah 3b)                      ║
    ║ clipBox: hitung titik potong garis dari pusat kotak.     ║
@@ -182,104 +235,130 @@ function clipBox(cx,cy,hw,hh,ux,uy,pad){
   return [cx + ux*t + ux/l*pad, cy + uy*t + uy/l*pad];
 }
 
-function edgesHTML(s){
-  const passages = new Map(); s.passages.forEach(p=>passages.set(p.id,p));
-  const chapters = new Map(); s.chapters.forEach(c=>chapters.set(c.id,c));
+function edgesHTML(s, level){
+  const {folders, nodes} = containersAt(s, level);
+  const visible = new Set();
+  const elMap = new Map();
+  folders.forEach(c => {visible.add(c.id); elMap.set(c.id, {type:'folder', el:c})});
+  nodes.forEach(p => {visible.add(p.id); elMap.set(p.id, {type:'node', el:p})});
 
   const buckets = new Map();
-  s.passages.forEach(p=>{
-    if(!p.choices) return;
-    const srcContainer = p.chapter || p.id;
-    if(!srcContainer) return;
-    p.choices.forEach(ch=>{
-      if(!ch.to) return;
-      const tgt = passages.get(ch.to);
-      if(!tgt) return;
-      const dstContainer = tgt.chapter || tgt.id;
-      if(srcContainer === dstContainer) return;
-      const key = srcContainer + '>' + dstContainer;
-      if(!buckets.has(key)) buckets.set(key, {src: srcContainer, dst: dstContainer, count: 0});
+  s.passages.forEach(p => {
+    const srcC = containerOf(s, p, level);
+    if (!visible.has(srcC)) return;
+    if (!p.choices) return;
+    p.choices.forEach(ch => {
+      if (!ch.to) return;
+      const tgt = s.passages.find(x => x.id === ch.to);
+      if (!tgt) return;
+      const dstC = containerOf(s, tgt, level);
+      if (!visible.has(dstC)) return;
+      if (srcC === dstC) return;
+      const key = srcC + '>' + dstC;
+      if (!buckets.has(key)) buckets.set(key, {src: srcC, dst: dstC, count: 0});
       buckets.get(key).count++;
     });
   });
 
   let out = '';
-  buckets.forEach(({src, dst, count})=>{
-    const srcEl = chapters.get(src) || passages.get(src);
-    const dstEl = chapters.get(dst) || passages.get(dst);
-    if(!srcEl || !dstEl) return;
-    if(srcEl.x == null || srcEl.y == null || dstEl.x == null || dstEl.y == null) return;
-    const srcIsFolder = chapters.has(src);
-    const dstIsFolder = chapters.has(dst);
-    const srcW = srcIsFolder ? 160 : 140;
-    const srcH = srcIsFolder ? 88 : 70;
-    const dstW = dstIsFolder ? 160 : 140;
-    const dstH = dstIsFolder ? 88 : 70;
-    const scx = srcEl.x + srcW/2, scy = srcEl.y + srcH/2;
-    const dcx = dstEl.x + dstW/2, dcy = dstEl.y + dstH/2;
-    const dx = dcx - scx, dy = dcy - scy, l = Math.hypot(dx, dy);
-    if(!l) return;
-    const midx = (scx + dcx)/2 - dy/l*28;
-    const midy = (scy + dcy)/2 + dx/l*28;
-    const [sx, sy] = clipBox(scx, scy, srcW/2, srcH/2, midx-scx, midy-scy, 0);
-    const [ex, ey] = clipBox(dcx, dcy, dstW/2, dstH/2, midx-dcx, midy-dcy, 5);
-    const hl = sel && (sel===src || sel===dst);
+  buckets.forEach(({src, dst, count}) => {
+    const sInfo = elMap.get(src), dInfo = elMap.get(dst);
+    if (!sInfo || !dInfo) return;
+    const sEl = sInfo.el, dEl = dInfo.el;
+    if (sEl.x == null || sEl.y == null || dEl.x == null || dEl.y == null) return;
+    const sw = sInfo.type === 'folder' ? 160 : 140;
+    const sh = sInfo.type === 'folder' ? 88 : 70;
+    const dw = dInfo.type === 'folder' ? 160 : 140;
+    const dh = dInfo.type === 'folder' ? 88 : 70;
+    const scx = sEl.x + sw/2, scy = sEl.y + sh/2;
+    const dcx = dEl.x + dw/2, dcy = dEl.y + dh/2;
+    const dx = dcx - scx, dy = dcy - scy, len = Math.hypot(dx, dy);
+    if (!len) return;
+    const midx = (scx + dcx)/2 - dy/len*28;
+    const midy = (scy + dcy)/2 + dx/len*28;
+    const [sx, sy] = clipBox(scx, scy, sw/2, sh/2, midx-scx, midy-scy, 0);
+    const [ex, ey] = clipBox(dcx, dcy, dw/2, dh/2, midx-dcx, midy-dcy, 5);
+    const hl = sel && (sel === src || sel === dst);
     out += `<path d="M${sx} ${sy} Q${midx} ${midy} ${ex} ${ey}" fill="none" stroke="${hl?'#3B82F6':'#A3A3A3'}" stroke-width="${hl?2.5:1.5}" marker-end="url(#${hl?'mb':'ma'})"/>`;
-    if(count > 1){
+    if (count > 1) {
       out += `<g transform="translate(${midx} ${midy})"><circle r="9" fill="${hl?'#3B82F6':'#A3A3A3'}" stroke="var(--card)" stroke-width="2"/><text y="4" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${count}</text></g>`;
     }
   });
   return out;
 }
+
 const applyView=()=>$('mg')&&$('mg').setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`);
 
 function drawMap(){
   const s=S();if(!s||tab!=='map'||!$('mg'))return;
+  if(mapPath && !s.chapters.find(c => c.id === mapPath)){mapPath = null; view = {x:20, y:20, k:1};}
 
-  const roots = s.chapters.filter(c=>(c.parent||null)===null);
-  roots.forEach((c,i)=>{if(c.x==null){c.x=30+(i%3)*220;c.y=30+Math.floor(i/3)*140}});
-  const loose = s.passages.filter(p=>(p.chapter||null)===null);
-  loose.forEach((p,i)=>{if(p.x==null){p.x=30+(i%3)*200;p.y=30+Math.floor(i/3)*120}});
+  const {folders, nodes} = containersAt(s, mapPath);
+
+  folders.forEach((c,i) => {if(c.x==null||c.y==null){c.x=30+(i%3)*220;c.y=30+Math.floor(i/3)*140}});
+  const yOffset = folders.length ? Math.ceil(folders.length/3)*140 : 0;
+  nodes.forEach((p,i) => {if(p.x==null||p.y==null){p.x=30+(i%3)*200;p.y=30+Math.floor(i/3)*120+yOffset}});
 
   let n='';
-  roots.forEach(c=>{
-    const ps = s.passages.filter(p=>p.chapter===c.id).length;
-    const sub = s.chapters.filter(x=>x.parent===c.id).length;
+  folders.forEach(c => {
+    const ps = s.passages.filter(p => p.chapter === c.id).length;
+    const sub = s.chapters.filter(x => x.parent === c.id).length;
     const t = c.title.length > 14 ? c.title.slice(0,13)+'…' : c.title;
-    n += `<g class="nd folder" data-id="${c.id}" transform="translate(${c.x} ${c.y})"><rect width="160" height="88" rx="14"/><text x="14" y="46" style="font-size:22px">📁</text><text x="46" y="30" class="t1">${esc(t)}</text><text x="46" y="52" class="t2">${ps} bagian${sub?` · ${sub} sub`:''}</text></g>`;
+    n += `<g class="nd folder${sel===c.id?' on':''}" data-id="${c.id}" transform="translate(${c.x} ${c.y})"><rect width="160" height="88" rx="14"/><text x="14" y="46" style="font-size:22px">📁</text><text x="46" y="30" class="t1">${esc(t)}</text><text x="46" y="52" class="t2">${ps} bagian${sub?` · ${sub} sub`:''}</text></g>`;
   });
-  loose.forEach(p=>{
-    const inn = s.passages.reduce((k,x)=>k+x.choices.filter(c=>c.to===p.id).length,0);
+  nodes.forEach(p => {
+    const inn = s.passages.reduce((k,x) => k + x.choices.filter(c => c.to === p.id).length, 0);
     const t = p.title.length > 17 ? p.title.slice(0,16)+'…' : p.title;
     n += `<g class="nd${p.start?' st':''}${sel===p.id?' on':''}" data-id="${p.id}" transform="translate(${p.x} ${p.y})"><rect width="140" height="70" rx="12"/><text x="12" y="30" class="t1">${esc(t)}</text><text x="12" y="52" class="t2">${p.choices.length} keluar · ${inn} masuk</text>${p.start?'<text x="118" y="18" class="stt">★</text>':''}</g>`;
   });
 
-  $('eg').innerHTML = edgesHTML(s);
+  $('eg').innerHTML = edgesHTML(s, mapPath);
   $('ng').innerHTML = n;
   applyView();
 
-  $('mtb').innerHTML = `<button class="sm pr" data-a="mnp">+ Bagian</button><button class="sm" data-a="nc">+ Bab</button><button class="sm" data-a="mz" data-id="-">−</button><button class="sm" data-a="mz" data-id="+">+</button><button class="sm" data-a="mz" data-id="0">100%</button><button class="sm" data-a="mlay">Rapikan</button>`+(sel&&P(s,sel)?`<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`:'')+(conn?'<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>':'');
+  const inFolder = mapPath !== null;
+  let tb = `<button class="sm pr" data-a="mnp" data-id="${inFolder?mapPath:''}">+ Bagian</button>`;
+  tb += inFolder ? `<button class="sm" data-a="ncs" data-id="${mapPath}">+ Sub-bab</button>` : `<button class="sm" data-a="nc">+ Bab</button>`;
+  tb += `<button class="sm" data-a="mz" data-id="-">−</button><button class="sm" data-a="mz" data-id="+">+</button><button class="sm" data-a="mz" data-id="0">100%</button><button class="sm" data-a="mlay">Rapikan</button>`;
+  if (sel && P(s, sel)) tb += `<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`;
+  if (conn) tb += '<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>';
+  $('mtb').innerHTML = tb;
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
 function zoom(f,cx,cy){const k=Math.min(2.5,Math.max(.3,view.k*f));view.x=cx-(cx-view.x)*k/view.k;view.y=cy-(cy-view.y)*k/view.k;view.k=k;applyView()}
 $('app').addEventListener('pointerdown',e=>{
   const sv=e.target.closest('#msv');if(!sv)return;
-  const g=e.target.closest('.nd'),p=g&&P(S(),g.dataset.id);
-  drag={sx:e.clientX,sy:e.clientY,moved:false,id:p?p.id:null,vx:view.x,vy:view.y,px:p?.x,py:p?.y};
+  const g=e.target.closest('.nd');
+  let jenis=null,obj=null;
+  if(g){
+    const s=S();
+    if(g.classList.contains('folder')){jenis='folder';obj=s.chapters.find(c=>c.id===g.dataset.id)}
+    else{jenis='node';obj=s.passages.find(p=>p.id===g.dataset.id)}
+  }
+  drag={sx:e.clientX,sy:e.clientY,moved:false,id:obj?obj.id:null,jenis,obj,vx:view.x,vy:view.y,px:obj?.x,py:obj?.y};
   try{sv.setPointerCapture(e.pointerId)}catch(_){}
 });
 $('app').addEventListener('pointermove',e=>{
   if(pinch||!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
   if(!drag.moved&&Math.hypot(dx,dy)<5)return;drag.moved=true;
-  if(drag.id){const s=S(),p=P(s,drag.id);p.x=Math.round(drag.px+dx/view.k);p.y=Math.round(drag.py+dy/view.k);
-    document.querySelector('.nd[data-id="'+p.id+'"]').setAttribute('transform',`translate(${p.x} ${p.y})`);$('eg').innerHTML=edgesHTML(s)}
+  if(drag.id&&drag.obj){
+    drag.obj.x=Math.round(drag.px+dx/view.k);
+    drag.obj.y=Math.round(drag.py+dy/view.k);
+    const g=document.querySelector(`.nd[data-id="${drag.obj.id}"]`);
+    if(g)g.setAttribute('transform',`translate(${drag.obj.x} ${drag.obj.y})`);
+    $('eg').innerHTML=edgesHTML(S(),mapPath);
+  }
   else{view.x=drag.vx+dx;view.y=drag.vy+dy;applyView()}
 });
 $('app').addEventListener('pointerup',()=>{
   if(!drag)return;const d=drag;drag=null;const s=S();
-  if(d.moved){if(d.id){sel=d.id;save();drawMap()}return}
+  if(d.moved){
+    if(d.id){if(d.jenis==='folder'){save();drawMap()}else{sel=d.id;save();drawMap()}}
+    return;
+  }
   if(d.id){
-    if(conn&&sel&&sel!==d.id){const a=P(s,sel),b=P(s,d.id);if(!a.choices.some(c=>c.to===b.id))a.choices.push({id:uid(),text:b.title,to:b.id});conn=false;save()}
+    if(d.jenis==='folder'){masukFolder(s,d.id);render();return}
+    if(conn&&sel&&sel!==d.id){const a=P(s,sel),b=P(s,d.id);if(a&&b&&!a.choices.some(c=>c.to===b.id))a.choices.push({id:uid(),text:b.title,to:b.id});conn=false;save()}
     else{const now=Date.now();if(lastTap.id===d.id&&now-lastTap.t<350){lastTap={};sel=d.id;pDlg(d.id);return}lastTap={id:d.id,t:now};sel=d.id}
   }else{sel=null;conn=false}
   drawMap();

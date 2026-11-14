@@ -8,6 +8,7 @@ document.addEventListener('click',e=>{
     case 'tab':tab=id;eng=null;break;
     case 'open':eng=null;db.active=id;tab='ed';hist=[];sel=null;edPath=null;laci=false;break;
     case 'edpath':edPath=id||null;laci=false;break;
+    case 'mapnav':masukFolder(S(), id||null);break;
 case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open',laci);go=false;break;
     case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
     case 'dels':ask('Hapus cerita ini beserta isinya?',()=>{db.stories=db.stories.filter(x=>x.id!==id);if(db.active===id)db.active=db.stories[0]?.id||null;});go=false;break;
@@ -32,7 +33,16 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
     case 'mnp':{const r=$('msv')?.getBoundingClientRect();pend=r?{x:Math.round((r.width/2-view.x)/view.k-70),y:Math.round((r.height/2-view.y)/view.k-35)}:null;pDlg(null,null);go=false;break}
     case 'mz':{const r=$('msv').getBoundingClientRect();if(id==='0'){view={x:20,y:20,k:1};applyView()}else zoom(id==='+'?1.25:.8,r.width/2,r.height/2);go=false;break}
     case 'mconn':conn=!conn;go=false;drawMap();break;
-    case 'mlay':s.chapters.forEach((c,i)=>{c.x=30+(i%3)*220;c.y=30+Math.floor(i/3)*140});s.passages.forEach((p,i)=>{p.x=30+(i%3)*200;p.y=30+Math.floor(i/3)*120});break;
+    case 'mlay':{
+  const s2=S();
+  if(s2){
+    const {folders, nodes}=containersAt(s2, mapPath);
+    let idx=0;
+    folders.forEach(c=>{c.x=30+(idx%3)*220;c.y=30+Math.floor(idx/3)*140;idx++});
+    nodes.forEach(p=>{p.x=30+(idx%3)*220;p.y=30+Math.floor(idx/3)*140;idx++});
+  }
+  break;
+}
     case 'ep':pDlg(id);go=false;break;
     case 'st':D.close();s.passages.forEach(p=>p.start=p.id===id);break;
     case 'chn':chain(s,id);break;

@@ -146,3 +146,15 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)!important}
 #app.app-map .peta-bar .row{flex-wrap:nowrap;min-width:max-content;gap:6px;margin:0!important}
 #app.app-map .mapw{flex:1;min-height:0;height:auto;border-radius:0;border-left:0;border-right:0;margin:0}
 /* ╚══════════════════════════════════════════════════════════╝ */
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — Breadcrumb Peta (Langkah 3c)                      ║
+   ╚══════════════════════════════════════════════════════════╝ */
+.peta-crumb-wrap{padding:4px 12px;background:var(--card)}
+#app.app-map .peta-crumb-wrap{flex:none;border-bottom:1px solid var(--line)}
+.peta-crumb{display:flex;flex-wrap:nowrap;gap:0;align-items:center;font-size:13px;min-width:0;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+.peta-crumb::-webkit-scrollbar{display:none}
+.peta-crumb button{border:0;background:none;padding:4px 8px;border-radius:6px;font-size:13px;color:var(--p);cursor:pointer;height:auto;font-weight:500;white-space:nowrap;min-height:32px}
+.peta-crumb button:hover{background:var(--p50)}
+.peta-crumb .sep{color:var(--t2);padding:0 2px;font-size:12px}
+.peta-crumb .cur{color:var(--t);font-weight:600;padding:4px 8px;white-space:nowrap}
+/* ╚══════════════════════════════════════════════════════════╝ */
