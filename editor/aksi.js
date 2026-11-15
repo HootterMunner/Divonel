@@ -5,8 +5,12 @@ document.addEventListener('click',e=>{
   const a=el.dataset.a,id=el.dataset.id,s=S();let go=true;
   const r=aksiPlay(a,id,el);if(r!==undefined){if(r)render();return}
   switch(a){
-    case 'tab':tab=id;eng=null;break;
-    case 'open':eng=null;db.active=id;tab='ed';hist=[];sel=null;edPath=null;laci=false;break;
+       case 'view': docView=id; if(docView==='map') { save(); } render(); break; 
+              case 'menu': menuDlg(id); go=false; break;
+    case 'guide': tab='gd'; docView='kd'; render(); break; // Alihkan ke panduan
+    case 'undo': document.execCommand('undo'); go=false; break;
+    case 'redo': document.execCommand('redo'); go=false; break;
+       case 'open':eng=null;db.active=id;tab='doc';docView='main';hist=[];sel=null;edPath=null;laci=false;break; 
     case 'edpath':edPath=id||null;laci=false;break;
     case 'mapnav':masukFolder(S(), id||null);break;
     case 'selmode':selectMode=!selectMode;if(!selectMode)selectIds.clear();sel=null;conn=false;go=false;drawMap();break;

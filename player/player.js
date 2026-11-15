@@ -7,6 +7,15 @@ let save=()=>{};
 const uid=()=>Math.random().toString(36).slice(2,10);
 const S=()=>db.stories.find(s=>s.id===db.active);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+/* ╔═══ AWAL FUNGSI sanitizeHTML ═══╗ */
+const sanitizeHTML = (html) => {
+  if(!html) return '';
+  let clean = String(html).replace(/<(script|iframe|object|embed|style)[^>]*>[\s\S]*?<\/\1>/gi, '');
+  clean = clean.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '');
+  clean = clean.replace(/href\s*=\s*["']javascript:[^"']*["']/gi, '');
+  return clean;
+};
+/* ╚═══ AKHIR FUNGSI sanitizeHTML ═══╝ */
 const P=(s,id)=>s.passages.find(p=>p.id===id);
 const $=id=>document.getElementById(id);
 const D=$('dlg');
@@ -80,8 +89,8 @@ function vPlay0(s){
   let v;try{v=eng.inti.tampilan()}catch(e){return h+`<div class="card"><h3>Terjadi kesalahan</h3><p>${esc(e.message)}</p></div>`}
   const mulai=(s.passages.find(p=>p.id===v.scene)||{}).start,pil=v.elemen.filter(e=>e.jenis==='pilihan');
   let o=h0(true)+`<div class="row sp" style="margin-bottom:8px"><span class="sub" style="margin:0">Bagian ${eng.hist.length+1+(eng.base||0)}</span>${eng.hist.length?'<button class="sm" data-a="bk">← Kembali</button>':''}</div><div class="card">`;
-  v.elemen.forEach(e=>{if(e.jenis==='judul')o+=`<div class="row sp"><h2 style="margin:0">${esc(e.isi)}</h2>${mulai?'<span class="badge">Awal</span>':''}</div>`;else if(e.jenis==='teks')o+=`<p class="pc" style="color:var(--t);font-size:15px;margin-top:10px">${esc(e.isi)}</p>`});
-  if(!v.elemen.some(e=>e.jenis==='teks')&&!(eng.extra||[]).length)o+='<p class="sub" style="margin-top:10px"><i>Bagian ini belum memiliki teks.</i></p>';(eng.extra||[]).forEach(t=>o+=`<p class="pc" style="color:var(--t);font-size:15px;margin-top:10px">${esc(t)}</p>`);
+  v.elemen.forEach(e=>{if(e.jenis==='judul')o+=`<div class="row sp"><h2 style="margin:0">${esc(e.isi)}</h2>${mulai?'<span class="badge">Awal</span>':''}</div>`;else if(e.jenis==='teks')o+=`<p class="pc" style="color:var(--t);font-size:15px;margin-top:10px">${sanitizeHTML(e.isi)}</p>`});
+  if(!v.elemen.some(e=>e.jenis==='teks')&&!(eng.extra||[]).length)o+='<p class="sub" style="margin-top:10px"><i>Bagian ini belum memiliki teks.</i></p>';(eng.extra||[]).forEach(t=>o+=`<p class="pc" style="color:var(--t);font-size:15px;margin-top:10px">${sanitizeHTML(t)}</p>`);
   o+='</div>';
   if(!pil.length)return o+empty('Cerita berakhir di sini','Tidak ada pilihan lagi untuk dilanjutkan.',`<button class="pr" data-a="rs">Mulai ulang</button>`+(eng.hist.length?'<button data-a="bk">Kembali ke bagian sebelumnya</button>':''));
   return o+`<p class="sub">Pilihan:</p>`+pil.map((c,i)=>`<button class="ch" data-a="go" data-id="${c.id}"><i>${i+1}</i><span style="flex:1">${esc(c.label)}</span></button>`).join('');

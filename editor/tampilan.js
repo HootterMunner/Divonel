@@ -1,7 +1,6 @@
 /* ═══ editor/tampilan.js — tampilan editor ═══
    State UI (tab, sel, more), render(), Pustaka, Editor, Peta, panel debug. */
-let tab='lib',sel=null,hist=[],tmp=[],cur=null;
-
+let tab='lib', docView='main', sel=null, hist=[], tmp=[], cur=null;
 /* ╔═══ AWAL FUNGSI recentStore (riwayat passage) ═══╗
    Simpan 12 ID terakhir, tampil 4 di dialogCari.
    Per-cerita: localStorage "cerita.recent.<storyId>".
@@ -52,36 +51,99 @@ const btns=(ok='Simpan')=>`<div class="row" style="justify-content:flex-end"><bu
    ║ HARUS ada. Dipanggil oleh render().                      ║
    ╚══════════════════════════════════════════════════════════╝ */
 function ribbonHTML(){
-  if(tab==='lib'||!S())return ''; // di Pustaka atau belum pilih cerita: ribbon disembunyikan
-  const cur = tab==='gd'?'kd':tab;
-  const tabs = [['ed','Editor'],['map','Peta'],['kd','Kode'],['play','Main']];
-  // ─── AWAL INDIKATOR USER ───
+    const s = S();
+   if(tab==='lib'||!s)return '';
+  
+  // 1. View Switcher (Kanan)
+  const views = [['main','Main'],['map','Peta'],['kd','Kode']];
+  const viewSwitcher = `<div class="nav-tabs" role="tablist" style="flex:0 0 auto; margin-left:8px">${views.map(([k,n])=>`<button type="button" role="tab" data-a="view" data-id="${k}" class="${docView===k?'on':''}" aria-selected="${docView===k}">${n}</button>`).join('')}</div>`;
+
+  // 2. Undo/Redo & Tool View (Kiri)
+  let tools = `<button class="sm" data-a="undo" title="Undo">↶</button><button class="sm" data-a="redo" title="Redo">↷</button>`;
+    if(docView==='map'){
+      app.className = (s.passages.length || s.chapters.length) ? 'app-map' : '';
+      app.innerHTML=vMap(s);
+      setTimeout(() => { if(typeof drawMap === 'function') drawMap(); }, 10);
+    tools += `<span style="width:1px;height:16px;background:var(--line);margin:0 4px"></span>`;
+    tools += `<button class="sm" data-a="fit" title="Fit ke layar">⛶ Fit</button>`;
+    tools += `<button class="sm" data-a="resetview" title="Recenter">🎯</button>`;
+    tools += `<button class="sm" data-a="cari" title="Cari bagian">🔍 Cari</button>`;
+  } else if(docView==='kd'){
+    tools += `<span style="width:1px;height:16px;background:var(--line);margin:0 4px"></span>`;
+    tools += `<button class="sm" data-a="guide" title="Panduan">📖 Panduan</button>`;
+  }
+
+  // 3. Menu Dropdown (Tengah)
+  const menus = `<div style="display:flex;gap:4px;margin:0 8px">
+    <button class="sm" data-a="menu" data-id="file">File</button>
+    <button class="sm" data-a="menu" data-id="editor">Editor</button>
+    <button class="sm" data-a="menu" data-id="tampilan">Tampilan</button>
+    <button class="sm" data-a="menu" data-id="format">Format</button>
+  </div>`;
+
+  // 4. Indikator User (Paling Kanan)
   let userBtn = '';
-  if(sb && sbUser){
+  if(typeof sb !== 'undefined' && sb && typeof sbUser !== 'undefined' && sbUser){
     if(sbUser.is_anonymous){
-      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px;display:flex;align-items:center;gap:4px"><span style="opacity:.6">👤</span> Tamu</button>`;
+      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:4px;font-size:12px;display:flex;align-items:center;gap:4px"><span style="opacity:.6">👤</span> Tamu</button>`;
     } else {
       const em = sbUser.email || 'User';
       const nm = em.split('@')[0];
-      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px;display:flex;align-items:center;gap:4px;border-color:var(--p);color:var(--p)"><span style="font-weight:bold">👤</span> ${nm}</button>`;
+      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:4px;font-size:12px;display:flex;align-items:center;gap:4px;border-color:var(--p);color:var(--p)"><span style="font-weight:bold">👤</span> ${nm}</button>`;
     }
   } else {
-    userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px">Login</button>`;
+    userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:4px;font-size:12px">Login</button>`;
   }
-  // ─── AKHIR INDIKATOR USER ───
-  
-  return `<button type="button" class="nav-home" data-a="tab" data-id="lib" title="Kembali ke Pustaka" aria-label="Kembali ke Pustaka">← Pustaka</button><div class="nav-tabs" role="tablist">${tabs.map(([k,n])=>`<button type="button" role="tab" data-a="tab" data-id="${k}" class="${cur===k?'on':''}" aria-selected="${cur===k}">${n}</button>`).join('')}</div>${userBtn}`;
+
+  return `
+    <button type="button" class="nav-home" data-a="tab" data-id="lib" title="Kembali ke Pustaka" aria-label="Kembali ke Pustaka">←</button>
+    <div style="display:flex;align-items:center;overflow-x:auto;white-space:nowrap;flex:1;padding:0 8px;gap:4px">
+      ${tools}
+      <span style="flex:1"></span>
+      ${menus}
+      <span style="flex:1"></span>
+      ${viewSwitcher}
+      ${userBtn}
+    </div>
+  `;
 }
 
+/* ╔═══ AWAL FUNGSI render ═══╗ */
 function render(){
   $('nav').innerHTML=ribbonHTML();
   const s=S(),app=$('app');
-  app.className = tab === 'map' && s && (s.passages.length || s.chapters.length) ? 'app-map' : '';
-document.body.classList.toggle('map-lock', app.className === 'app-map');
-  app.innerHTML=tab==='gd'?vGuide():tab==='lib'?vLib():!s?head('Belum ada cerita','Pilih atau buat cerita di Pustaka.')+empty('Tidak ada cerita dipilih','',`<button class="pr" data-a="tab" data-id="lib">Ke Pustaka</button>`):tab==='ed'?vEd(s):tab==='map'?vMap(s):tab==='kd'?vKode(s):vPlay(s)+vDbg();
-  if(tab==='map')drawMap();
-  if(tab==='play')pasangGambar();
+  
+  if(tab==='lib'){
+    app.className='';
+    app.innerHTML=vLib();
+  } else if(!s){
+    app.className='';
+    app.innerHTML=head('Belum ada cerita','Pilih atau buat cerita di Pustaka.')+empty('Tidak ada cerita dipilih','',`<button class="pr" data-a="tab" data-id="lib">Ke Pustaka</button>`);
+  } else {
+    // Render berdasarkan docView
+    if(docView==='map'){
+      app.className = (s.passages.length || s.chapters.length) ? 'app-map' : '';
+      app.innerHTML=vMap(s);
+      drawMap();
+    } else if(docView==='kd'){
+      app.className='';
+      app.innerHTML=vKode(s);
+    } else {
+      // docView === 'main' (sebelumnya vPlay)
+      app.className='';
+      app.innerHTML=vPlay(s)+vDbg();
+      // pasangGambar(); // (Baris ini opsional, bisa dihapus kalau error)
+    }
+  }
 }
+/* ╚═══ AKHIR FUNGSI render ═══╝ */
+
+/* ╔═══ AWAL FUNGSI menuDlg (Kerangka) ═══╗ */
+function menuDlg(id){
+  let title = id.charAt(0).toUpperCase() + id.slice(1);
+  dlg(`<h2>Menu ${title}</h2><p class="sub">Fitur ini akan diisi pada tahap selanjutnya.</p><div class="row" style="justify-content:flex-end"><button data-a="dx">Tutup</button></div>`, null);
+}
+/* ╚═══ AKHIR FUNGSI menuDlg ═══╝ */
 
 function vLib(){
   const l=db.stories.map(s=>`<div class="card ${s.id===db.active?'on':''}"><div class="row sp"><div style="flex:1;cursor:pointer" data-a="open" data-id="${s.id}"><h3>${esc(s.title)}</h3><p>${esc(s.description)||'Tanpa deskripsi'}${s.author?' — '+esc(s.author):''}</p></div><div class="row"><button class="sm" data-a="exp" data-id="${s.id}">Ekspor</button><button class="sm del" data-a="dels" data-id="${s.id}">Hapus</button></div></div></div>`).join('');
@@ -89,7 +151,7 @@ function vLib(){
 }
 
 function pCard(p){
-  return `<div class="card"><div class="row sp"><h3>${esc(p.title)}</h3>${p.start?'<span class="badge">★ Mulai</span>':''}${(p.refs||[]).length?`<span class="cnt">${p.refs.length} skrip</span>`:''}</div><p style="white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${p.content?esc(p.content.slice(0,140)):'<i>Bagian kosong</i>'}</p><div class="row" style="margin-top:8px"><button class="sm" data-a="ch" data-id="${p.id}">Pilihan (${p.choices.length})</button><button class="sm" data-a="ep" data-id="${p.id}">Ubah</button></div></div>`;
+  return `<div class="card"><div class="row sp"><h3>${esc(p.title)}</h3>${p.start?'<span class="badge">★ Mulai</span>':''}${(p.refs||[]).length?`<span class="cnt">${p.refs.length} skrip</span>`:''}</div><p style="white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden">${p.content?sanitizeHTML(p.content.slice(0,140)):'<i>Bagian kosong</i>'}</p><div class="row" style="margin-top:8px"><button class="sm" data-a="ch" data-id="${p.id}">Pilihan (${p.choices.length})</button><button class="sm" data-a="ep" data-id="${p.id}">Ubah</button></div></div>`;
 }
 /* ╔══════════════════════════════════════════════════════════╗
    ║ AWAL FUNGSI BARU — chapterLevel                          ║
@@ -427,7 +489,8 @@ tb += `<button class="sm" data-a="fit" title="Muat semua di layar">⛶ Fit</butt
     if (sel && P(s, sel)) tb += `<button class="sm ${conn?'pr':''}" data-a="mconn">Sambungkan</button><button class="sm" data-a="ep" data-id="${sel}">Ubah</button><button class="sm del" data-a="dp" data-id="${sel}">Hapus</button>`;
     if (conn) tb += '<span class="sub" style="margin:0">Ketuk bagian tujuan.</span>';
   }
-  $('mtb').innerHTML = tb;
+  const mtb = $('mtb');
+  if(mtb) mtb.innerHTML = ''; // Sembunyikan toolbar lama, karena sudah ada di ribbon atas
 }
 /* ╚══════════════════════════════════════════════════════════╝ */
 function zoom(f,cx,cy){const k=Math.min(2.5,Math.max(.3,view.k*f));view.x=cx-(cx-view.x)*k/view.k;view.y=cy-(cy-view.y)*k/view.k;view.k=k;applyView()}
@@ -723,8 +786,9 @@ function teleportKe(s, passageId){
     history.pushState({mapPath: targetLevel}, '');
     view = viewPerLevel.get(mapPath || 'root') || {x:20, y:20, k:1};
   }
-  tab = 'map';
-eng = null;
+  docView = 'map';
+  tab = 'doc';
+  eng = null;
 render();
 window.scrollTo(0, 0);
 if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
