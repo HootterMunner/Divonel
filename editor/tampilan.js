@@ -822,7 +822,7 @@ function loginDlg(){
     h += '<h3 style="color:var(--p);margin-bottom:4px">Terhubung</h3>';
     h += `<p style="font-weight:600;color:var(--t);margin:0">${esc(sbUser.email)}</p>`;
     h += '</div>';
-    h += '<div class="row" style="justify-content:center;margin-top:16px"><button class="sm" data-a="auth-out">Logout & Kembali ke Tamu</button></div>';
+ h += '<div class="row" style="justify-content:center;margin-top:16px"><button class="sm del" data-a="auth-out">Logout Akun</button></div>';
   }
   
   h += '<div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>';
@@ -851,7 +851,7 @@ function cloudDlg(){
     
     if(s){
       h += `<div class="card" data-a="cloud-save" data-id="${s.id}" style="cursor:pointer;display:flex;align-items:center;gap:12px"><div style="font-size:24px">☁️</div><div><h3>Simpan ke Cloud</h3><p>${esc(s.title)}</p></div></div>`;
-      h += `<div class="card" data-a="cloud-load" data-id="${s.id}" style="cursor:pointer;display:flex;align-items:center;gap:12px"><div style="font-size:24px">📥</div><div><h3>Muat dari Cloud</h3><p>${esc(s.title)}</p></div></div>`;
+            h += `<div class="card" data-a="cloud-list" style="cursor:pointer;display:flex;align-items:center;gap:12px;margin-top:16px;border-style:dashed"><div style="font-size:24px">☁️</div><div><h3>Lihat Daftar Cerita Cloud</h3><p>Muat cerita lain dari akun Anda</p></div></div>`;
     } else {
       h += '<p class="sub">Buka cerita dulu untuk sync.</p>';
     }
@@ -861,3 +861,29 @@ function cloudDlg(){
   dlg(h, null);
 }
 /* ╚═══ AKHIR FUNGSI AUTH & CLOUD DIALOG ═══╝ */
+/* ╔═══ AWAL FUNGSI cloudListDlg ═══╗ */
+function cloudListDlg(){
+  if(!sb || !sbUser) return;
+  dlg('<h2>Daftar Cerita Cloud</h2><p class="sub">Memuat data dari server…</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>', null);
+  
+  sbListStories().then(list => {
+    if(!list.length) {
+      dlg('<h2>Daftar Cerita Cloud</h2><p class="sub">Belum ada cerita yang tersimpan di akun ini.</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>', null);
+      return;
+    }
+    
+    let h = '<h2>Daftar Cerita Cloud</h2><div class="cres" style="max-height:50vh">';
+    list.forEach(item => {
+      const isActive = S() && S().id === item.id;
+      h += `<div class="cres-item" data-a="cloud-load-item" data-id="${item.id}" style="border-color:${isActive?'var(--p)':'var(--line)'}">`;
+      h += `<b>${esc(item.judul)} ${isActive?'(Aktif)':''}</b>`;
+      h += `<span class="sub">Terakhir disimpan: ${esc(item.updated_at)}</span>`;
+      h += `</div>`;
+    });
+    h += '</div><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>';
+    dlg(h, null);
+  }).catch(e => {
+    dlg(`<h2>Daftar Cerita Cloud</h2><p class="err">${esc(e.message)}</p><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>`, null);
+  });
+}
+/* ╚═══ AKHIR FUNGSI cloudListDlg ═══╝ */

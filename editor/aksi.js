@@ -104,19 +104,34 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
     case 'auth-github':sbLoginOAuth('github').catch(e=>toast(e.message));go=false;break;
     case 'auth-google':sbLoginOAuth('google').catch(e=>toast(e.message));go=false;break;
     case 'auth-in-view':emailLoginDlg();go=false;break;
-    case 'auth-out':sbSignOut().then(()=>{toast('Logout. Kembali ke mode tamu.');loginDlg();render();}).catch(e=>toast(e.message));go=false;break;
-    case 'auth-do-in':{
+        case 'auth-out':{
+      if(sbUser && sbUser.is_anonymous) {
+        toast('Anda masih mode Tamu. Hubungkan email/GitHub dulu agar data tersimpan.');
+        go=false; break;
+      }
+      ask('Yakin logout? Pastikan Anda ingat email/password atau akun GitHub/Google Anda untuk login kembali.', () => {
+        sbSignOut().then(()=>{toast('Logout berhasil.');loginDlg();render();}).catch(e=>toast(e.message));
+      });
+      go=false;break;
+    }
+        case 'auth-do-in':{
       const em=$('al_em').value.trim(),pw=$('al_pw').value;
       if(!em||!pw){warn('Email dan password wajib.');go=false;break}
       el.disabled=true;
-      sbSignInEmail(em,pw).then(()=>{toast('Berhasil masuk.');loginDlg();render();}).catch(e=>{warn(e.message);el.disabled=false});
+      sbSignInEmail(em,pw).then(async ()=>{
+        await _syncLokalKeCloud();
+        toast('Berhasil masuk.');loginDlg();render();
+      }).catch(e=>{warn(e.message);el.disabled=false});
       go=false;break;
     }
     case 'auth-upgrade':{
       const em=$('au_em').value.trim(),pw=$('au_pw').value;
       if(!em||pw.length<6){warn('Email dan password (min 6) wajib.');go=false;break}
       el.disabled=true;
-      sbUpgradeEmail(em,pw).then(()=>{toast('Terkoneksi. Cek email verifikasi jika diminta.');loginDlg();render();}).catch(e=>{warn(e.message);el.disabled=false});
+      sbUpgradeEmail(em,pw).then(async ()=>{
+        await _syncLokalKeCloud();
+        toast('Terkoneksi. Cek email verifikasi jika diminta.');loginDlg();render();
+      }).catch(e=>{warn(e.message);el.disabled=false});
       go=false;break;
     }
     case 'cloud-save':{
@@ -125,9 +140,9 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
       sbSaveStory(s).then(()=>{toast('Tersimpan di cloud.');el.style.opacity=1}).catch(e=>{toast('Gagal simpan: '+e.message);el.style.opacity=1});
       go=false;break;
     }
-    case 'cloud-load':{
+    case 'cloud-list':cloudListDlg();go=false;break;
+    case 'cloud-load-item':{
       const idc=el.dataset.id;
-      if(!idc){go=false;break}
       el.style.opacity=.5;
       sbLoadStory(idc).then(data=>{
         if(!data||!data.id)throw new Error('Data cloud tidak valid.');
@@ -151,7 +166,31 @@ document.addEventListener('change',e=>{
   if(f.size>5e6){warn('Berkas terlalu besar (maksimal 5 MB).');return}
   f.text().then(t=>{const a=$('f1');if(a)a.value=t}).catch(()=>warn('Berkas tidak bisa dibaca. Coba tempel isinya langsung.'));
 });
-inisialisasi().then(()=>{db.stories.forEach(migrasi);save();render();if(modeTerbatas)toast('IndexedDB tidak tersedia: mode terbatas. Cerita disimpan di localStorage dan aset belum bisa dipakai.')});
+inisialisasi().then(()=>{
+  db.stories.forEach(migrasi);
+  save();
+  render();
+  if(modeTerbatas)toast('IndexedDB tidak tersedia: mode terbatas. Cerita disimpan di localStorage dan aset belum bisa dipakai.');
+  
+  // ─── AUTO SYNC SETELAH LOGIN OAUTH (GITHUB/GOOGLE) ───
+  setTimeout(() => {
+    if (sbUser && !sbUser.is_anonymous) {
+      _syncLokalKeCloud();
+    }
+  }, 2000); 
+})
 
 /* Langkah 3a: klik di luar sidebar (saat laci terbuka di HP) menutup laci. */
 document.addEventListener('click',e=>{if(!laci)return;if(e.target.closest('.ed-side')||e.target.closest('[data-a="laci"]'))return;laci=false;document.getElementById('edside')?.classList.remove('open')});
+/* ╔═══ AWAL FUNGSI _syncLokalKeCloud ═══╗ */
+async function _syncLokalKeCloud() {
+  if(!sb || !sbUser) return;
+  // Tunggu sebentar agar Supabase selesai update status auth
+  await new Promise(r => setTimeout(r, 500));
+  if (db.stories && db.stories.length > 0) {
+    for (const story of db.stories) {
+      try { await sbSaveStory(story); } catch(e) { console.warn('Sync lokal gagal:', e); }
+    }
+  }
+}
+/* ╚═══ AKHIR FUNGSI _syncLokalKeCloud ═══╝ */

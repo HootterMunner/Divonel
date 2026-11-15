@@ -66,5 +66,17 @@ async function sbLoadStory(storyId){
   if(!data) throw new Error('Cerita tidak ditemukan di cloud.');
   return data.data;
 }
-
+/* ╔═══ AWAL FUNGSI DAFTAR CLOUD ═══╗ */
+async function sbListStories(){
+  if(!sb || !sbUser) throw new Error('Belum terhubung.');
+  const {data, error} = await sb.from('stories').select('id, updated_at, data').order('updated_at', {ascending: false});
+  if(error) throw new Error(error.message);
+  return data.map(row => ({
+    id: row.id,
+    judul: (row.data && row.data.title) || 'Tanpa Judul',
+    updated_at: new Date(row.updated_at).toLocaleString('id-ID'),
+    data: row.data
+  }));
+}
+/* ╚═══ AKHIR FUNGSI DAFTAR CLOUD ═══╝ */
 sbInit();
