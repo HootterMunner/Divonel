@@ -55,7 +55,22 @@ function ribbonHTML(){
   if(tab==='lib'||!S())return ''; // di Pustaka atau belum pilih cerita: ribbon disembunyikan
   const cur = tab==='gd'?'kd':tab;
   const tabs = [['ed','Editor'],['map','Peta'],['kd','Kode'],['play','Main']];
-  return `<button type="button" class="nav-home" data-a="tab" data-id="lib" title="Kembali ke Pustaka" aria-label="Kembali ke Pustaka">← Pustaka</button><div class="nav-tabs" role="tablist">${tabs.map(([k,n])=>`<button type="button" role="tab" data-a="tab" data-id="${k}" class="${cur===k?'on':''}" aria-selected="${cur===k}">${n}</button>`).join('')}</div>`;
+  // ─── AWAL INDIKATOR USER ───
+  let userBtn = '';
+  if(sb && sbUser){
+    if(sbUser.is_anonymous){
+      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px;display:flex;align-items:center;gap:4px"><span style="opacity:.6">👤</span> Tamu</button>`;
+    } else {
+      const em = sbUser.email || 'User';
+      const nm = em.split('@')[0];
+      userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px;display:flex;align-items:center;gap:4px;border-color:var(--p);color:var(--p)"><span style="font-weight:bold">👤</span> ${nm}</button>`;
+    }
+  } else {
+    userBtn = `<button type="button" class="sm" data-a="login" style="margin-left:8px;font-size:12px">Login</button>`;
+  }
+  // ─── AKHIR INDIKATOR USER ───
+  
+  return `<button type="button" class="nav-home" data-a="tab" data-id="lib" title="Kembali ke Pustaka" aria-label="Kembali ke Pustaka">← Pustaka</button><div class="nav-tabs" role="tablist">${tabs.map(([k,n])=>`<button type="button" role="tab" data-a="tab" data-id="${k}" class="${cur===k?'on':''}" aria-selected="${cur===k}">${n}</button>`).join('')}</div>${userBtn}`;
 }
 
 function render(){
@@ -70,7 +85,7 @@ document.body.classList.toggle('map-lock', app.className === 'app-map');
 
 function vLib(){
   const l=db.stories.map(s=>`<div class="card ${s.id===db.active?'on':''}"><div class="row sp"><div style="flex:1;cursor:pointer" data-a="open" data-id="${s.id}"><h3>${esc(s.title)}</h3><p>${esc(s.description)||'Tanpa deskripsi'}${s.author?' — '+esc(s.author):''}</p></div><div class="row"><button class="sm" data-a="exp" data-id="${s.id}">Ekspor</button><button class="sm del" data-a="dels" data-id="${s.id}">Hapus</button></div></div></div>`).join('');
-  return head('Pustaka',db.stories.length+' cerita')+(l||empty('Belum ada cerita','Buat cerita pertama atau impor dari berkas JSON.'))+`<div class="row"><button class="pr" data-a="news">Buat cerita baru</button><button data-a="imp">Impor</button><button data-a="demo">Muat cerita contoh</button></div><p class="footer-license">© 2026 Helmy Hidayat · <a href="LICENSE" target="_blank" rel="noopener">MIT License</a></p>`;
+  return head('Pustaka',db.stories.length+' cerita')+(l||empty('Belum ada cerita','Buat cerita pertama atau impor dari berkas JSON.'))+`<div class="row"><button class="pr" data-a="news">Buat cerita baru</button><button data-a="imp">Impor</button><button data-a="demo">Muat cerita contoh</button><button data-a="cloud">☁ Cloud Sync</button></div><p class="footer-license">© 2026 Helmy Hidayat · <a href="LICENSE" target="_blank" rel="noopener">MIT License</a></p>`;
 }
 
 function pCard(p){
@@ -772,3 +787,77 @@ function dialogCari(s){
   renderRes();
 }
 /* ╚═══ AKHIR FUNGSI dialogCari ═══╝ */
+/* ╔═══ AWAL FUNGSI AUTH & CLOUD DIALOG ═══╗ */
+function loginDlg(){
+  if(!sb){ dlg('<h2>Login</h2><p class="sub">Cloud belum diset.</p><button data-a="dx">Tutup</button>', null); return; }
+  
+  let h = '<h2>Akun</h2>';
+  
+  if(!sbUser){
+    h += '<p class="sub">Menghubungkan ke cloud…</p>';
+  } else if(sbUser.is_anonymous){
+    h += '<p class="sub" style="margin-bottom:16px">Anda masuk sebagai <b>Tamu</b>. Data tersimpan di cloud, tapi hanya untuk browser ini. Login untuk mengakses dari perangkat lain.</p>';
+    
+    // Tombol OAuth
+    h += '<div class="row" style="margin-bottom:8px"><button class="pr" data-a="auth-github" style="width:100%;justify-content:center;background:#24292e;border-color:#24292e;color:#fff;height:44px;font-size:14px;font-weight:600">Login with GitHub</button></div>';
+    h += '<div class="row" style="margin-bottom:16px"><button class="pr" data-a="auth-google" style="width:100%;justify-content:center;background:#fff;border:1px solid #ddd;color:#333;height:44px;font-size:14px;font-weight:600"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px;margin-right:8px"> Login with Google</button></div>';
+    
+    h += '<div style="text-align:center;font-size:12px;color:var(--t2);margin:12px 0">atau</div>';
+    
+    // Email Form
+    h += '<div style="background:var(--bg);border-radius:12px;padding:16px;margin-bottom:12px">';
+    h += '<p class="sub" style="margin:0 0 8px;font-weight:600;color:var(--t)">Hubungkan Email</p>';
+    h += '<input id="au_em" type="email" placeholder="Email (contoh: nama@gmail.com)" style="margin:0 0 8px">';
+    h += '<input id="au_pw" type="password" placeholder="Password (min. 6 karakter)" style="margin:0 0 12px">';
+    h += '<button class="pr" data-a="auth-upgrade" style="width:100%;height:40px">Buat Akun / Hubungkan</button>';
+    h += '</div>';
+    
+    h += '<div style="text-align:center;font-size:12px;color:var(--t2);margin:12px 0">sudah punya akun?</div>';
+    h += '<div class="row" style="margin-bottom:16px"><button class="sm" data-a="auth-in-view" style="width:100%;justify-content:center">Masuk dengan Email</button></div>';
+    
+  } else {
+    // Sudah login permanen
+    h += '<div class="card" style="text-align:center;padding:24px 16px;background:var(--p50);border-color:var(--p200)">';
+    h += '<div style="font-size:32px;margin-bottom:8px">✓</div>';
+    h += '<h3 style="color:var(--p);margin-bottom:4px">Terhubung</h3>';
+    h += `<p style="font-weight:600;color:var(--t);margin:0">${esc(sbUser.email)}</p>`;
+    h += '</div>';
+    h += '<div class="row" style="justify-content:center;margin-top:16px"><button class="sm" data-a="auth-out">Logout & Kembali ke Tamu</button></div>';
+  }
+  
+  h += '<div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>';
+  dlg(h, null);
+}
+
+function emailLoginDlg(){
+  dlg('<h2>Masuk</h2><p class="sub">Masukkan email dan password akun Anda.</p><label>Email</label><input id="al_em" type="email" placeholder="nama@email.com"><label>Password</label><input id="al_pw" type="password" placeholder="Password"><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Batal</button><button class="pr" data-a="auth-do-in">Masuk</button></div>', null);
+}
+
+function cloudDlg(){
+  const s = S();
+  let h = '<h2>☁ Cloud Sync</h2>';
+  
+  if(!sb){
+    h += '<p class="sub">Cloud belum diset.</p>';
+  } else if(!sbUser) {
+    h += '<p class="sub">Menghubungkan…</p>';
+  } else {
+    // Banner Status
+    if(sbUser.is_anonymous){
+      h += '<div class="card" style="border-color:var(--a);background:var(--a50);margin-bottom:16px"><p style="margin:0;color:#92400e"><b>Mode Tamu:</b> Data tersimpan hanya untuk browser ini. <a href="#" data-a="login" style="color:#92400e;text-decoration:underline">Login</a> agar aman.</p></div>';
+    } else {
+      h += `<div class="card" style="border-color:var(--p200);background:var(--p50);margin-bottom:16px"><p style="margin:0;color:var(--p)"><b>Akun:</b> ${esc(sbUser.email)}</p></div>`;
+    }
+    
+    if(s){
+      h += `<div class="card" data-a="cloud-save" data-id="${s.id}" style="cursor:pointer;display:flex;align-items:center;gap:12px"><div style="font-size:24px">☁️</div><div><h3>Simpan ke Cloud</h3><p>${esc(s.title)}</p></div></div>`;
+      h += `<div class="card" data-a="cloud-load" data-id="${s.id}" style="cursor:pointer;display:flex;align-items:center;gap:12px"><div style="font-size:24px">📥</div><div><h3>Muat dari Cloud</h3><p>${esc(s.title)}</p></div></div>`;
+    } else {
+      h += '<p class="sub">Buka cerita dulu untuk sync.</p>';
+    }
+  }
+  
+  h += '<div class="row" style="justify-content:flex-end;margin-top:16px"><button data-a="dx">Tutup</button></div>';
+  dlg(h, null);
+}
+/* ╚═══ AKHIR FUNGSI AUTH & CLOUD DIALOG ═══╝ */

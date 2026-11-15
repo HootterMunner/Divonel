@@ -19,12 +19,14 @@
 <dialog id="dlg"></dialog>
 <!-- Tanpa modul/bundler: semua berkas berbagi satu lingkup global, URUTAN PENTING. Lihat PETA.md. -->
 <!-- player/ = ikut ke HTML ekspor (daftar yang sama ada di BERKAS_PLAYER, editor/ekspor.js) -->
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="player/mesin.js"></script>
 <script src="player/dsl.js"></script>
 <script src="player/player.js"></script>
 <!-- editor/ = hanya editor -->
 <script src="editor/demo.js"></script>
 <script src="editor/penyimpanan.js"></script>
+<script src="editor/supabase.js"></script>
 <script src="editor/aset.js"></script>
 <script src="editor/aset-ui.js"></script>
 <script src="editor/ekspor.js"></script>
