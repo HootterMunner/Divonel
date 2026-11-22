@@ -3,7 +3,7 @@
 let diPustaka=true, docView='main', sel=null, hist=[], tmp=[], cur=null;
 let editMode = false;
 let panduanAktif = false;
-let isPlayPreview = false; //pastikan ini ada (dari T3)
+let splitMode = 'split';//pastikan ini ada (dari T3)
 /* ╔═══ AWAL FUNGSI recentStore (riwayat passage) ═══╗
    Simpan 12 ID terakhir, tampil 4 di dialogCari.
    Per-cerita: localStorage "cerita.recent.<storyId>".
@@ -65,15 +65,18 @@ function ribbonHTML(){
 
   // Baris 2: tools per view
   let tools = '';
-  if(docView==='main'){
+   if(docView==='main'){
     tools = `<button class="sm" data-a="undo" title="Undo">↶</button>
              <button class="sm" data-a="redo" title="Redo">↷</button>
              <span class="nav-sep"></span>
              
-             <!-- ← BARU: Tombol Toggle Play khusus Mobile -->
-             <button class="sm nav-play-toggle" data-a="toggleplay" style="margin-left:auto; background:var(--p); color:#fff; border:0;">
-               ${isPlayPreview ? '✎ Editor' : '▶ Play'}
-             </button>`;
+             <!-- ← BARU: 3 Mode Tampilan (Desktop & Mobile) -->
+             <div class="nav-seg" style="margin-left: 10px; border: 1px solid var(--line); border-radius: 8px; padding: 2px;">
+               <button class="sm ${splitMode==='editor'?'pr':''}" data-a="splitmode" data-id="editor" style="${splitMode==='editor'?'background:var(--p);color:#fff':''}">✎ Editor</button>
+               <button class="sm ${splitMode==='split'?'pr':''}" data-a="splitmode" data-id="split" style="${splitMode==='split'?'background:var(--p);color:#fff':''}">⛶ Split</button>
+               <button class="sm ${splitMode==='play'?'pr':''}" data-a="splitmode" data-id="play" style="${splitMode==='play'?'background:var(--p);color:#fff':''}">▶ Play</button>
+             </div>`;
+  
   } else if(docView==='map'){
     tools = `<button class="sm" data-a="fit">⛶ Fit</button>
              <button class="sm" data-a="resetview">🎯</button>
@@ -157,32 +160,30 @@ function render(){
 
   // --- MODE MAIN (SPLIT VIEW) ---
    if(docView === 'main'){
-    app.className = 'app-split';
+    // Tambahkan class sesuai mode yang dipilih
+    app.className = `app-split mode-${splitMode}`;
     
     const html = `
       <div class="split-container">
-        <div class="split-editor" ${isPlayPreview ? 'style="display:none"' : ''}>
+        <!-- Class 'hidden-mode' akan disembunyikan oleh CSS nanti -->
+        <div class="split-editor" id="panel-editor">
           ${vEd(s)}
         </div>
+        
         <div class="split-resizer" id="split-resizer"></div>
-        <div class="split-play ${isPlayPreview ? 'show' : ''}" id="split-play">
-          <iframe src="player/player.html" style="width:100%;height:100%;border:0;background:#fff;" id="play-iframe"></iframe>
+        
+        <div class="split-play" id="panel-play">
+          <iframe src="player/player.html" id="play-iframe" style="width:100%;height:100%;border:0;background:#fff;"></iframe>
         </div>
       </div>
     `;
     
     app.innerHTML = html;
 
-    // Kirim data saat iframe siap
     const iframe = document.getElementById('play-iframe');
     if (iframe) {
       iframe.onload = () => {
         iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
-        
-        // Kirim ulang setelah 500ms untuk memastikan player sudah siap
-        setTimeout(() => {
-          iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
-        }, 500);
       };
     }
   }

@@ -467,98 +467,67 @@ nav {
 }
 /* ╚═══ AKHIR [T2-Fix] ═══╝ */
 
-/* ╔═══ AWAL [T3-FINAL] Layout Split View ═══╗ */
+/* ╔═══ AWAL [T3-FINAL] Layout Split View & Mode ═══╗ */
 .split-container {
   display: flex;
-  height: calc(100vh - var(--nav-h) - 40px); 
+  height: calc(100vh - var(--nav-h) - 40px);
   width: 100%;
   overflow: hidden;
 }
 
-/* Sisi Kiri: Editor */
+/* Panel Editor (Kiri) */
 .split-editor {
-  flex: 1; /* Ambil 50% ruang */
-  min-width: 300px;
+  flex: 1;
+  min-width: 250px;
   overflow-y: auto;
   background: var(--bg);
 }
 
-.split-editor .ed-wrap {
-  margin: 0;
-  display: block;
-}
-
-.split-editor .ed-main {
-  padding: 12px;
-}
-
-/* Sisi Kanan: Player */
+/* Panel Play (Kanan) */
 .split-play {
-  flex: 1; /* Ambil 50% ruang */
-  min-width: 300px;
+  flex: 1;
+  min-width: 250px;
   background: #ffffff;
   border-left: 1px solid var(--line);
   position: relative;
-  z-index: 10;
 }
 
-/* Iframe harus mengisi 100% area player */
 .split-play iframe {
-  width: 100% !important;
-  height: 100% !important;
-  border: 0 !important;
-  flex: 1;
+  width: 100%; height: 100%; border: 0; display: block;
 }
 
 /* Garis Resizer */
 .split-resizer {
-  width: 2px;
+  width: 4px;
   background: var(--line);
   cursor: col-resize;
-  position: relative;
-  z-index: 20;
-  touch-action: none; /* Cegah browser nge-scroll saat menarik garis */
+  touch-action: none;
 }
 
-/* Area sentuh resizer yang lebih lebar (untuk HP) */
-.split-resizer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -10px;
-  right: -10px;
+/* ── ATURAN MODE ── */
+
+/* 1. Mode Editor Only */
+.mode-editor .split-play, 
+.mode-editor .split-resizer { 
+  display: none !important; 
 }
 
-.split-resizer:hover {
-  background: var(--p);
+/* 2. Mode Play Only */
+.mode-play .split-editor, 
+.mode-play .split-resizer { 
+  display: none !important; 
 }
 
-/* --- Tampilan Desktop (Layar Lebar) --- */
-@media (min-width: 768px) {
-  .split-play {
-    display: flex;
-  }
-  .split-resizer {
-    display: block;
-  }
-}
+/* 3. Mode Split (Default) */
+.mode-split .split-play { display: block; }
+.mode-split .split-resizer { display: block; }
 
-/* --- Tampilan Mobile (Layar Sempit) --- */
-@media (max-width: 767px) {
-  .split-resizer {
-    display: none;
-  } /* Sembunyikan garis di HP */
-
-  /* Player muncul menutupi layar jika tombol Play diklik */
-  .split-play.show {
-    display: flex;
-    position: fixed;
-    top: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 100;
-  }
+/* Sembunyikan resizer di HP (karena layarnya sempit) */
+@media(max-width:767px){
+  .mode-split .split-resizer { display: none; }
+  .mode-split .split-play { display: none; } /* Di HP, mode split default ke Editor */
+  
+  /* Jika di HP memilih mode Play, tampilkan penuh */
+  .mode-play .split-play { display: block; }
 }
 /* ╚═══ AKHIR [T3-FINAL] ═══╝ */

@@ -23,10 +23,10 @@ case 'guide-toggle': panduanAktif=!panduanAktif; docView='kd'; render(); break;
        /* ╔═══ AWAL [Tahap 5a] ═══╗ */
 case 'edtoggle': editMode=!editMode; render(); if(editMode) toast('Mode edit: klik judul/teks untuk mengetik. Selesai = keluar.'); return;
 // ← BARU: Toggle layar play di mobile
-    case 'toggleplay':
-      isPlayPreview = !isPlayPreview;
+     case 'splitmode':
+      splitMode = id; // id berisi 'editor', 'split', atau 'play'
       render();
-      go = false; 
+      go = false;
       break;
               case 'menu': menuDlg(id); go=false; break;
     case 'guide': diPustaka=false; docView='kd'; panduanAktif=true; render(); break; // Alihkan ke panduan
