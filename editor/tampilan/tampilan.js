@@ -152,26 +152,37 @@ function render(){
   }
 
   // --- MODE MAIN (SPLIT VIEW) ---
-  if(docView === 'main'){
-    app.className = 'app-split';
-    
-    // app-layout: flex row di desktop, block di mobile
-    const html = `
-      <div class="split-container">
-        <div class="split-editor">
-          ${vEd(s)}
-        </div>
-        <div class="split-resizer" id="split-resizer"></div>
-        <div class="split-play ${isPlayPreview ? 'show' : ''}" id="split-play">
-          <iframe src="player/player.html" id="play-iframe" style="width:100%;height:100%;border:0"></iframe>
-        </div>
+if (docView === 'main') {
+  app.className = 'app-split';
+  
+  const html = `
+    <div class="split-container">
+      <div class="split-editor" ${isPlayPreview ? 'style="display:none"' : ''}>
+        ${vEd(s)}
       </div>
-    `;
-    
-    app.innerHTML = html;
-    tempelEditMain(s);
-    document.getElementById('app')?.classList.toggle('edit-mode', editMode);
+      <div class="split-resizer" id="split-resizer"></div>
+      <div class="split-play ${isPlayPreview ? 'show' : ''}" id="split-play">
+        <iframe src="player/player.html" id="play-iframe" style="width:100%;height:100%;border:0;"></iframe>
+      </div>
+    </div>
+  `;
+  
+  app.innerHTML = html;
+  
+  // Kirim data ke iframe (hanya sekali saat load)
+  const iframe = document.getElementById('play-iframe');
+  if (iframe) {
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
+      } catch (e) { console.warn('Iframe belum siap:', e); }
+    };
   }
+  
+  // tempelEditMain(s); // Biarkan tetap dikomentari jika masih error
+  document.getElementById('app')?.classList.toggle('edit-mode', editMode);
+}
+    
 }
 /* ╚═══ AKHIR [T3] render() ═══╝ */
 
@@ -222,3 +233,28 @@ document.addEventListener('pointerdown', function(e) {
   document.addEventListener('pointerup', onUp);
 });
 /* ╚═══ AKHIR [T3-Fix] Split Resizer ═══╝ */
+/* ╔═══ AWAL [T3] Live Update Editor → Play ═══╗ */
+// Pantau perubahan pada input/textarea di dalam editor
+document.addEventListener('input', function(e) {
+  // Hanya jalankan jika sedang di mode Main dan iframe play sedang aktif
+  if (docView !== 'main') return;
+  
+  const iframe = document.getElementById('play-iframe');
+if (iframe) {
+  iframe.onload = () => {
+    try {
+      // Kirim data awal saat iframe selesai loading
+      iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
+    } catch (e) { console.warn('Iframe belum siap:', e); }
+  };
+}
+  // Beri jeda sedikit (debounce) agar tidak terlalu sering kirim data
+  clearTimeout(window._liveUpdateTimer);
+  window._liveUpdateTimer = setTimeout(() => {
+    const s = S(); // Ambil state cerita terbaru
+    if (s) {
+      iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
+    }
+  }, 500); // Tunggu 0.5 detik setelah user berhenti mengetik
+});
+/* ╚═══ AKHIR [T3] Live Update ═══╝ */
