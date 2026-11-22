@@ -1,0 +1,139 @@
+/* ═══ editor/editor-sidebar.css — sidebar Editor (3a) ═══ */ /* pecahan editor.css */
+/* ╔══════════════════════════════════════════════════════════╗
+   ║ AWAL — CSS sidebar Editor (Langkah 3a)                   ║
+   ║ Tambahkan di akhir editor.css. Tidak menghapus apa pun.  ║
+   ╚══════════════════════════════════════════════════════════╝ */
+.ed-wrap{display:flex;gap:0;margin:0;min-height:60vh}
+.ed-side {
+  flex: 0 0 240px;
+  background: var(--card);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  position: sticky;
+  top: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
+  height: calc(100vh - var(--nav-h) - env(safe-area-inset-top, 0px));
+  align-self: flex-start;
+  transition: transform .2s ease;
+}
+.sb-title{font-weight:700;font-size:13px;padding:10px 12px 8px;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+.sb-head{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);padding:10px 12px 4px;font-weight:600}
+.sb-item{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;color:var(--t);cursor:pointer;min-height:38px;user-select:none;border:0;background:none;text-align:left;width:100%}
+.sb-item:hover{background:var(--bg)}
+.sb-item.on{background:var(--p50);color:var(--p);font-weight:600}
+.sb-item .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--t2);flex:none}
+.sb-item.on .sb-dot{background:var(--p)}
+.sb-item .sb-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-item .cnt{font-size:10px;color:var(--t2);background:var(--bg);border-radius:6px;padding:1px 6px;line-height:14px;flex:none}
+.sb-item.on .cnt{background:var(--card);color:var(--p)}
+.sb-foot{padding:8px 8px 12px;border-top:1px solid var(--line);margin-top:6px}
+.sb-foot button{width:100%}
+.ed-main{flex:1;min-width:0;padding:0 16px}
+.ed-bar{display:flex;align-items:center;gap:8px;margin:8px 0 12px;min-height:36px}
+.ed-hamb{flex:none;width:36px;height:36px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:0;font-size:16px;cursor:pointer;color:var(--t)}
+.crumb{display:flex;flex-wrap:wrap;gap:0;align-items:center;font-size:13px;min-width:0}
+.crumb button{border:0;background:none;padding:4px 6px;border-radius:6px;font-size:13px;color:var(--p);cursor:pointer;height:auto;font-weight:500}
+.crumb button:hover{background:var(--p50)}
+.crumb .sep{color:var(--t2);padding:0 2px;font-size:12px}
+.crumb .cur{color:var(--t);font-weight:600;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folder-card{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.folder-card:hover{border-color:var(--p200);background:var(--p50)}
+.folder-card:active{opacity:.8}
+.folder-card .fc-icon{font-size:20px;width:28px;text-align:center;flex:none}
+.folder-card .fc-body{flex:1;min-width:0}
+.folder-card .fc-body b{font-size:14px;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+.folder-card .fc-body p{margin:2px 0 0;font-size:12px;color:var(--t2)}
+.folder-card .fc-arrow{color:var(--t2);font-size:18px;flex:none}
+
+@media(pointer:coarse){
+  /* Perbesar teks & tombol di semua area (HP mode desktop maupun mobile) */
+  body{font-size:16px}
+  h1{font-size:24px}
+  h2{font-size:18px}
+  .sub{font-size:14px}
+  .card h3{font-size:15px}
+  .card p{font-size:13px}
+  button{min-height:44px;padding:0 16px;font-size:15px}
+  button.sm{min-height:38px;padding:0 12px;font-size:14px}
+  input,textarea,select{font-size:16px;padding:10px 12px}
+  #app.app-map #mtb button{min-height:44px;padding:0 14px;font-size:14px}
+  .peta-crumb button,.peta-crumb .cur{font-size:14px;min-height:36px}
+  .ed-side .sb-item{font-size:14px;min-height:44px}
+  .folder-card{padding:16px}
+  .folder-card .fc-body b{font-size:15px}
+  .folder-card .fc-body p{font-size:13px}
+}
+/* ╚══════════════════════════════════════════════════════════╝ */
+/* ← BARU: sidebar drawer di mobile */
+@media(max-width:767px){
+  .ed-wrap{ margin:0; }
+
+  .ed-side{
+    position:fixed;
+    top:0; left:0; bottom:0;
+    width:min(280px,80vw);
+    height:100vh;
+    z-index:60;
+    transform:translateX(-100%);
+    box-shadow:2px 0 12px rgba(0,0,0,.15);
+  }
+  .ed-side.open{ transform:translateX(0); }
+
+  .ed-hamb{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  /* Scrim / overlay gelap */
+  .ed-scrim{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.4);
+    z-index:55;
+  }
+}
+
+/* ╔═══ AWAL [1.2-fix-GoogleDocs] Sidebar fixed kiri, main digeser ═══╗ */
+@media(min-width:768px){
+  .ed-hamb{ display:none; }
+  .ed-scrim{ display:none; }
+
+  /* ← BARU: sidebar fixed ke viewport kiri, bukan flex-item */
+  .ed-side{
+    position:fixed;
+    top:calc(var(--nav-h) + env(safe-area-inset-top,0px));
+    left:0;
+    bottom:0;
+    width:240px;
+    height:auto;
+    z-index:30;
+    border-right:1px solid var(--line);
+    background:var(--card);
+    overflow-y:auto;
+    transition:none;
+  }
+
+  /* ← BARU: main digeser, tidak lagi flex-item */
+  .ed-main{
+    margin-left:240px;
+    max-width:680px;
+    margin-right:auto;
+    padding:0 16px;
+  }
+
+  /* ← BARU: ed-wrap tidak perlu flex lagi di desktop */
+  .ed-wrap{
+    display:block;
+    min-height:auto;
+  }
+}
+/* ╚═══ AKHIR [1.2-fix-GoogleDocs] ═══╝ */
+@media(min-width:768px){
+  .ed-side{ position:fixed!important; flex:none!important; }
+  .ed-main{ margin-left:240px!important; }
+}
+
+/* ← BARU: saat ada sidebar (mode edit), #app full width */
+@media(min-width:768px){
+  #app:has(.ed-side){ max-width:none; padding:0; }
+}

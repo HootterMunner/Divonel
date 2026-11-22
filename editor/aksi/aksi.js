@@ -5,13 +5,37 @@ document.addEventListener('click',e=>{
   const a=el.dataset.a,id=el.dataset.id,s=S();let go=true;
   const r=aksiPlay(a,id,el);if(r!==undefined){if(r)render();return}
   switch(a){
-       case 'view': docView=id; if(docView==='map') { save(); } render(); break; 
+/* ╔═══ AWAL [Tahap 5b-fix] ═══╗ */
+case 'view': diPustaka=false; docView=id; panduanAktif=false; simpanUI(); if(docView==='map') { save(); } render(); break;
+// ← TAMBAH case baru:
+case 'viewmenu': {
+  const items = [['main','Main'],['map','Peta'],['kd','Kode']]
+    .map(([k,n])=>`<button data-a="view" data-id="${k}" style="width:100%;justify-content:flex-start;${docView===k?'background:var(--p50);color:var(--p)':''}">${n}</button>`)
+    .join('');
+  dlg(`<h2>Pindah view</h2><div class="row" style="flex-direction:column;gap:8px">${items}</div><div class="row" style="justify-content:flex-end;margin-top:8px"><button data-a="dx">Tutup</button></div>`, null);
+  go=false; break;
+}
+// ← HAPUS SELURUH case 'tab' { ... } (yang lama, isinya tab='lib' dst)
+// ← GANTI JADI:
+case 'pustaka': diPustaka=true; panduanAktif=false; edPath=null; laci=false; docView='main'; simpanUI(); break;
+case 'guide-toggle': panduanAktif=!panduanAktif; docView='kd'; render(); break;
+/* ╚═══ AKHIR [Tahap 5b-fix] ═══╝ */
+       /* ╔═══ AWAL [Tahap 5a] ═══╗ */
+case 'edtoggle': editMode=!editMode; render(); if(editMode) toast('Mode edit: klik judul/teks untuk mengetik. Selesai = keluar.'); return;
+// ← BARU: Toggle layar play di mobile
+    case 'toggleplay':
+      isPlayPreview = !isPlayPreview;
+      render();
+      go = false; 
+      break;
               case 'menu': menuDlg(id); go=false; break;
-    case 'guide': tab='gd'; docView='kd'; render(); break; // Alihkan ke panduan
+    case 'guide': diPustaka=false; docView='kd'; panduanAktif=true; render(); break; // Alihkan ke panduan
     case 'undo': document.execCommand('undo'); go=false; break;
     case 'redo': document.execCommand('redo'); go=false; break;
-       case 'open':eng=null;db.active=id;tab='doc';docView='main';hist=[];sel=null;edPath=null;laci=false;break; 
-    case 'edpath':edPath=id||null;laci=false;break;
+case 'open':eng=null;db.active=id;diPustaka=false;docView='main';hist=[];sel=null;edPath=null;laci=false;break;
+    /* ╔═══ AWAL [Tahap 5b] ═══╗ */
+case 'edpath':edPath=id||null;laci=false;simpanUI();break;
+/* ╚═══ AKHIR [Tahap 5b] ═══╝ */
     case 'mapnav':masukFolder(S(), id||null);break;
     case 'selmode':selectMode=!selectMode;if(!selectMode)selectIds.clear();sel=null;conn=false;go=false;drawMap();break;
 case 'selall':{
@@ -33,8 +57,7 @@ case 'fit':fitView(S());go=false;break;
 case 'resetview':resetView(S());go=false;break;
 case 'cari':dialogCari(S());go=false;break;
 case 'teleport':{D.close();teleportKe(S(), id);return true}
-case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open',laci);go=false;break;
-    case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
+case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open',laci);go=false;break; case 'news':dlg(`<h2>Cerita baru</h2><label>Judul</label><input id="f1"><label>Deskripsi</label><input id="f2"><label>Penulis</label><input id="f3">${btns('Buat')}`,()=>{const t=$('f1').value.trim();if(!t)return false;const n={id:uid(),title:t,description:$('f2').value,author:$('f3').value,chapters:[],passages:[]};db.stories.push(n);db.active=n.id;});go=false;break;
     case 'dels':ask('Hapus cerita ini beserta isinya?',()=>{db.stories=db.stories.filter(x=>x.id!==id);if(db.active===id)db.active=db.stories[0]?.id||null;});go=false;break;
     case 'exp':{inlineJanji.delete(id);inlineSiap(id);sumberPlayer(true).catch(()=>{});dlg(`<h2>Ekspor cerita</h2><p class="sub">Pilih bentuk berkas yang akan disimpan.</p><div class="card" data-a="dlh" data-id="${id}" style="cursor:pointer"><h3>Game (.html)</h3><p>Game lengkap dengan semua aset. Untuk dibagikan ke pembaca.</p></div><div class="card" data-a="dlj" data-id="${id}" style="cursor:pointer"><h3>Cadangan (.json)</h3><p>Logika cerita saja, tanpa aset. Untuk versioning dan pindah editor.</p></div><p id="dnote" class="sub"></p><div class="row" style="align-items:center;flex-wrap:wrap"><span class="sub" style="margin:0">Tidak terunduh? Lihat teksnya:</span><button class="sm" data-a="fbh" data-id="${id}">.html</button><button class="sm" data-a="fbj" data-id="${id}">.json</button></div><div class="row" style="justify-content:flex-end;margin-top:8px"><button data-a="dx">Tutup</button></div>`,null);go=false;break}
     case 'dlh':case 'dlj':go=false;unduh(id,a==='dlh'?'html':'json');break;
@@ -104,6 +127,15 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
     case 'dbg':if(eng)eng.dbg=!eng.dbg;go=false;break;
     case 'aset':asetDlg();go=false;break;
        case 'login':loginDlg();go=false;break;
+case 'login-refresh':{
+  sb.auth.getSession().then(({ data: { session } }) => {
+    sbUser = session?.user || null;
+    loginDlg();
+    render();
+  });
+  go=false;break;
+}
+// ↑ SAMPAI SINI
     case 'cloud':cloudDlg();go=false;break;
     case 'auth-github':sbLoginOAuth('github').catch(e=>toast(e.message));go=false;break;
     case 'auth-google':sbLoginOAuth('google').catch(e=>toast(e.message));go=false;break;
@@ -157,6 +189,18 @@ case 'laci':laci=!laci;document.getElementById('edside')?.classList.toggle('open
       }).catch(e=>{toast('Gagal muat: '+e.message);el.style.opacity=1});
       go=false;break;
     }
+    case 'cloud-del-item':{
+  const idc = el.dataset.id;
+  if (!idc) { toast('ID tidak ditemukan!'); go=false; break; }
+  
+  ask('Hapus cerita ini dari cloud?', () => {
+    sbDeleteStory(idc).then(()=>{
+      toast('Cerita dihapus dari cloud.');
+      cloudListDlg(); // refresh daftar
+    }).catch(e=>toast('Gagal hapus: '+e.message));
+  });
+  go=false;break;
+}
     case 'pgb':pgbDaftar();go=false;break;
     case 'pgp':pgbVal=id;pgbRender();go=false;break;
     case 'pgx':pgbVal=null;pgbRender();go=false;break;
@@ -170,31 +214,3 @@ document.addEventListener('change',e=>{
   if(f.size>5e6){warn('Berkas terlalu besar (maksimal 5 MB).');return}
   f.text().then(t=>{const a=$('f1');if(a)a.value=t}).catch(()=>warn('Berkas tidak bisa dibaca. Coba tempel isinya langsung.'));
 });
-inisialisasi().then(()=>{
-  db.stories.forEach(migrasi);
-  save();
-  render();
-  if(modeTerbatas)toast('IndexedDB tidak tersedia: mode terbatas. Cerita disimpan di localStorage dan aset belum bisa dipakai.');
-  
-  // ─── AUTO SYNC SETELAH LOGIN OAUTH (GITHUB/GOOGLE) ───
-  setTimeout(() => {
-    if (sbUser && !sbUser.is_anonymous) {
-      _syncLokalKeCloud();
-    }
-  }, 2000); 
-})
-
-/* Langkah 3a: klik di luar sidebar (saat laci terbuka di HP) menutup laci. */
-document.addEventListener('click',e=>{if(!laci)return;if(e.target.closest('.ed-side')||e.target.closest('[data-a="laci"]'))return;laci=false;document.getElementById('edside')?.classList.remove('open')});
-/* ╔═══ AWAL FUNGSI _syncLokalKeCloud ═══╗ */
-async function _syncLokalKeCloud() {
-  if(!sb || !sbUser) return;
-  // Tunggu sebentar agar Supabase selesai update status auth
-  await new Promise(r => setTimeout(r, 500));
-  if (db.stories && db.stories.length > 0) {
-    for (const story of db.stories) {
-      try { await sbSaveStory(story); } catch(e) { console.warn('Sync lokal gagal:', e); }
-    }
-  }
-}
-/* ╚═══ AKHIR FUNGSI _syncLokalKeCloud ═══╝ */

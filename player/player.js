@@ -101,8 +101,8 @@ function jalankanJs(s){
   for(let n=0;n<20;n++){
     const sc=eng.inti.tampilan().scene;
     if(eng.lastScene===sc)return;
-    eng.lastScene=sc;eng.extra=[];
-    const p=P(s,sc);if(!p)return;const kp=komposisi(s,p);if(!kp.js.trim())return;const jsKode=pustaka(s).js+'\n'+kp.js;
+    eng.lastScene=sc;eng.extra=[];eng.tema=null;eng.fx=null;
+const p=P(s,sc);if(!p)return;const kp=komposisi(s,p);if(!kp.js.trim())return;const jsKode=pustaka(s).js+'\n'+kp.js;
     let ke=null;
     const g={baca:k=>st.baca(N(k)),tulis:(k,v)=>st.tulis(N(k),v),tambah:(k,a)=>st.tulis(N(k),(Number(st.baca(N(k)))||0)+Number(a)),punya:i=>st.punya(i),ambil:i=>st.tambahItem(i),buang:i=>st.hapusItem(i),acak:(a,b)=>a+Math.floor(Math.random()*(b-a+1)),acakBerbobot:d=>Mesin.hitung({acakBerbobot:d},st),teks:t=>eng.extra.push(String(t)),pergi:t=>{ke=t},tema:o=>{eng.tema=o?Object.assign({},eng.tema,o):null},fade:(a,b)=>{eng.fx={masuk:Math.max(0,Math.min(3000,+a||0)),keluar:Math.max(0,Math.min(3000,+b||0))}}};
     try{new Function('g',jsKode)(g)}catch(e){eng.err=[`Bagian "${p.title}" (JavaScript): ${e.message}`];return}

@@ -1,0 +1,24 @@
+/* ═══ editor/editor-akhir.css — map-lock, .cres-head, baris atas (nav) ═══ */ /* pecahan editor.css */
+/* ╔═══ AWAL map-lock: cegah zoom halaman di mode Peta ═══╗
+   Hanya <nav> dan <main> yang dikunci; <dialog> (#dlg)
+   adalah saudara keduanya, jadi popup passage/cari
+   tetap bisa di-pinch-zoom.
+   ═══════════════════════════════════════════════════════ */
+body.map-lock > nav,
+body.map-lock > main{touch-action:pan-x pan-y}
+/* ╚═══ AKHIR map-lock ═══╝ */
+/* ╔═══ AWAL CSS .cres-head ═══╗ */
+.cres-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--t2);padding:10px 12px 4px;font-weight:600;border-top:1px solid var(--line)}
+.cres-head:first-child{border-top:0;padding-top:8px}
+/* ╚═══ AKHIR CSS .cres-head ═══╝ */
+
+#app.edit-mode [data-edit]{
+  outline: 2px dashed #BFDBFE;
+  outline-offset: 3px;
+  border-radius: 6px;
+  cursor: text;
+}
+#app.edit-mode [data-edit]:focus{
+  outline: 2px solid #2563EB;
+  outline-offset: 3px;
+}

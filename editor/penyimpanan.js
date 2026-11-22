@@ -75,4 +75,50 @@ function pastikanPersist(){ // tidak pernah menolak (reject) dan tidak perlu dit
 }
 cekPersist();
 
-save=()=>{if(idb){try{localStorage.setItem(KM,JSON.stringify({active:db.active,urut:db.stories.map(x=>x.id)}))}catch(e){}clearTimeout(tmr);tmr=setTimeout(sinkron,250)}else try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
+save=()=>{if(idb){try{localStorage.setItem(KM,JSON.stringify({active:db.active,urut:db.stories.map(x=>x.id),ui:bacaUI()}))}catch(e){}clearTimeout(tmr);tmr=setTimeout(sinkron,250)}else try{localStorage.setItem(K,JSON.stringify(db))}catch(e){}};
+
+/* ╔═══ AWAL [Tahap 5b — persistensi UI] ═══╗
+   simpanUI(): tulis {tab, docView, edPath} ke KM.ui secara langsung (tanpa debounce).
+   muatUI():   baca KM.ui. Dipanggil di mulai.js setelah inisialisasi().
+   Pengecualian: kalau tidak ada cerita aktif, paksa tab='lib'.
+   ═══════════════════════════════════════════ */
+function bacaUI(){
+  try{
+    const m = bacaLS(KM) || {};
+    const u = m.ui || {};
+    return {
+      tab:     (u.tab === 'lib' || u.tab === 'doc') ? u.tab : null,
+      docView: (u.docView === 'main' || u.docView === 'map' || u.docView === 'kd') ? u.docView : null,
+      edPath:  (typeof u.edPath === 'string' || u.edPath === null) ? u.edPath : undefined
+    };
+  }catch(e){ return {}; }
+}
+
+function simpanUI(){
+  try{
+    const m = bacaLS(KM) || {};
+    m.ui = { tab: tab, docView: docView, edPath: edPath };
+    localStorage.setItem(KM, JSON.stringify(m));
+  }catch(e){}
+}
+
+function muatUI(){
+  try{
+    const u = bacaUI();
+    /* Kalau tidak ada cerita aktif, tidak mungkin masuk doc: paksa Pustaka. */
+    if(!db.active){
+      tab = 'lib';
+      return;
+    }
+    if(u.tab === 'doc'){
+      tab = 'doc';
+      if(u.docView) docView = u.docView;
+      /* edPath hanya dipakai saat doc; validasi ada di vEd, jadi aman diset mentah. */
+      if(u.edPath !== undefined) edPath = u.edPath;
+      panduanAktif = false;
+    } else {
+      tab = 'lib';
+    }
+  }catch(e){ tab = 'lib'; }
+}
+/* ╚═══ AKHIR [Tahap 5b — persistensi UI] ═══╝ */
