@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Player</title>
+  <link rel="stylesheet" href="player.css">
+    <style>
+    /* ═══ PAKSA TEMA TERANG UNTUK PLAYER ═══ */
+    :root {
+      /* Variabel ini menimpa variabel gelap dari editor */
+      --bg: #f3f4f6 !important;        /* Latar abu-abu sangat terang (tidak silau) */
+      --card: #ffffff !important;      /* Kartu putih bersih */
+      --t: #1f2937 !important;         /* Teks abu-abu gelap (bukan hitam pekat) */
+      --t2: #6b7280 !important;        /* Teks sekunder */
+      --line: #e5e7eb !important;      /* Garis pemisah */
+      --p: #2563eb !important;         /* Warna aksen biru */
+      --p50: #eff6ff !important;       /* Biru transparan */
+    }
+    
+    body { 
+      margin: 0; 
+      padding: 24px; 
+      background: var(--bg); 
+      color: var(--t); 
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh; 
+      box-sizing: border-box;
+      overflow-y: auto; 
+    }
+    
+    #app { 
+      width: 100%; 
+      max-width: 700px; 
+      margin: 0 auto; 
+    }
+    
+    /* Rapikan scrollbar */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Perbaiki lencana "Awal" agar teksnya gelap dan terbaca */
+    .badge {
+      background: #fef3c7 !important; /* Latar kuning muda */
+      color: #92400e !important;      /* Teks cokelat gelap */
+      border: 1px solid #fcd34d !important;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Perbaiki tombol (Simpan, Muat, Mulai ulang) di player */
+    button {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    button:hover { background: #f3f4f6; }
+    
+    /* Tombol pilihan (Pungut koin, dll) */
+    button.ch {
+      width: 100%;
+      text-align: left;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      color: #1f2937;
+    }
+    button.ch i {
+      background: #eff6ff;
+      color: #2563eb;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-style: normal;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <dialog id="dlg"></dialog>
+
+  <script src="mesin.js"></script>
+  <script src="dsl.js"></script>
+  <script src="player.js"></script>
+    <script>
+    // Jembatan Klik untuk tombol di dalam Player
+    document.addEventListener('click', function(e) {
+      const el = e.target.closest('[data-a]');
+      if (!el) return;
+
+      const aksi = el.dataset.a;
+      const id = el.dataset.id;
+
+      // Panggil fungsi aksiPlay bawaan player.js Anda
+      if (typeof aksiPlay === 'function') {
+        // aksiPlay mengembalikan true jika perlu render ulang
+        const perluRender = aksiPlay(aksi, id, el);
+        
+        if (perluRender) {
+          // Render ulang layar player setelah pilihan diklik
+          const s = S(); // Ambil cerita aktif dari db
+          if (s && typeof vPlay === 'function') {
+            document.getElementById('app').innerHTML = vPlay(s);
+          }
+        }
+      }
+    });
+  </script>
+
+  <script>
+    // Jembatan Listener Iframe -> Panggil fungsi asli
+    window.addEventListener('message', function(event) {
+      if (!event.data || event.data.type !== 'LOAD_STORY') return;
+      // Panggil fungsi yang sudah kita perbaiki di player.js
+      if (typeof window.putarCeritaDariEditor === 'function') {
+        window.putarCeritaDariEditor(event.data.data);
+      }
+    });
+  </script>
+</body>
+</html>

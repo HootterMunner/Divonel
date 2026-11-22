@@ -2,6 +2,7 @@
    Pembantu bersama (db, S, esc, dlg, toast, warn), simpan/muat pemain, renderer Play (vPlay, latarGambar),
    jalankanJs, pustaka skrip, migrasi, aksiPlay. Ikut ke HTML ekspor; editor memakainya juga di tab Main. */
 /* ── Pembantu bersama (editor & ekspor) ── */
+console.log("Player script loaded!");
 let db={stories:[],active:null},onSave=null,askFn=null;
 let save=()=>{};
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -146,38 +147,24 @@ function aksiPlay(a,id,el){
   }
 }
 
-/* ╔═══ AWAL [T3] Jembatan Iframe Editor → Player ═══╗ */
-window.addEventListener('message', function(event) {
-  if (!event.data || event.data.type !== 'LOAD_STORY') return;
-  console.log('[Player] Pesan diterima!', event.data.data.title); // Pastikan ini muncul di console
+// Jembatan untuk Editor
+// Jembatan untuk Editor (VERSI FINAL)
+window.putarCeritaDariEditor = function(dataCerita) {
+  console.log("Menerima perintah putar:", dataCerita.title);
   
-  
-  const dataCerita = event.data.data;
-  console.log('[Player] Menerima cerita:', dataCerita.title);
-  
-  try {
-    // 1. Masukkan cerita ke dalam database lokal player
-    // Hapus cerita lama dengan ID yang sama (jika ada) agar tidak duplikat
-    db.stories = db.stories.filter(s => s.id !== dataCerita.id);
-    db.stories.push(dataCerita);
-    
-    // 2. Set sebagai cerita aktif
-    db.active = dataCerita.id;
-    
-    // 3. Paksa player untuk merender ulang (biasanya fungsi ini bernama render atau loadStory)
-    // Jika di player.js Anda namanya bukan 'render', sesuaikan.
-    if (typeof render === 'function') {
-      render();
-    } else if (typeof mulaiPermainan === 'function') {
-      mulaiPermainan();
-    }
-    
-    // 4. Sembunyikan layar pustaka (jika player punya elemen #app)
-    const appEl = document.getElementById('app');
-    if (appEl) appEl.style.display = 'block'; // atau hapus class yang menyembunyikannya
-    
-  } catch (e) {
-    console.error('[Player] Gagal memuat cerita:', e);
+  // 1. Masukkan ke DB
+  db.stories = db.stories.filter(s => s.id !== dataCerita.id);
+  db.stories.push(dataCerita);
+  db.active = dataCerita.id;
+
+  // 2. Panggil mulaiMain DENGAN PARAMETER dataCerita!
+  if (typeof mulaiMain === 'function') {
+    mulaiMain(dataCerita); 
   }
-});
-/* ╚═══ AKHIR [T3] Jembatan Iframe ═══╝ */
+
+  // 3. Gambar layarnya! (Ini fungsi asli dari player.js Anda)
+  if (typeof vPlay === 'function') {
+    const app = document.getElementById('app');
+    if (app) app.innerHTML = vPlay(dataCerita);
+  }
+};

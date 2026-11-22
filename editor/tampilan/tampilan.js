@@ -69,7 +69,11 @@ function ribbonHTML(){
     tools = `<button class="sm" data-a="undo" title="Undo">↶</button>
              <button class="sm" data-a="redo" title="Redo">↷</button>
              <span class="nav-sep"></span>
-             <button class="sm ${editMode?'pr':''}" data-a="edtoggle">${editMode?'✎ Selesai':'✎ Edit'}</button>`;
+             
+             <!-- ← BARU: Tombol Toggle Play khusus Mobile -->
+             <button class="sm nav-play-toggle" data-a="toggleplay" style="margin-left:auto; background:var(--p); color:#fff; border:0;">
+               ${isPlayPreview ? '✎ Editor' : '▶ Play'}
+             </button>`;
   } else if(docView==='map'){
     tools = `<button class="sm" data-a="fit">⛶ Fit</button>
              <button class="sm" data-a="resetview">🎯</button>
@@ -152,37 +156,36 @@ function render(){
   }
 
   // --- MODE MAIN (SPLIT VIEW) ---
-if (docView === 'main') {
-  app.className = 'app-split';
-  
-  const html = `
-    <div class="split-container">
-      <div class="split-editor" ${isPlayPreview ? 'style="display:none"' : ''}>
-        ${vEd(s)}
-      </div>
-      <div class="split-resizer" id="split-resizer"></div>
-      <div class="split-play ${isPlayPreview ? 'show' : ''}" id="split-play">
-        <iframe src="player/player.html" id="play-iframe" style="width:100%;height:100%;border:0;"></iframe>
-      </div>
-    </div>
-  `;
-  
-  app.innerHTML = html;
-  
-  // Kirim data ke iframe (hanya sekali saat load)
-  const iframe = document.getElementById('play-iframe');
-  if (iframe) {
-    iframe.onload = () => {
-      try {
-        iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
-      } catch (e) { console.warn('Iframe belum siap:', e); }
-    };
-  }
-  
-  // tempelEditMain(s); // Biarkan tetap dikomentari jika masih error
-  document.getElementById('app')?.classList.toggle('edit-mode', editMode);
-}
+   if(docView === 'main'){
+    app.className = 'app-split';
     
+    const html = `
+      <div class="split-container">
+        <div class="split-editor" ${isPlayPreview ? 'style="display:none"' : ''}>
+          ${vEd(s)}
+        </div>
+        <div class="split-resizer" id="split-resizer"></div>
+        <div class="split-play ${isPlayPreview ? 'show' : ''}" id="split-play">
+          <iframe src="player/player.html" style="width:100%;height:100%;border:0;background:#fff;" id="play-iframe"></iframe>
+        </div>
+      </div>
+    `;
+    
+    app.innerHTML = html;
+
+    // Kirim data saat iframe siap
+    const iframe = document.getElementById('play-iframe');
+    if (iframe) {
+      iframe.onload = () => {
+        iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
+        
+        // Kirim ulang setelah 500ms untuk memastikan player sudah siap
+        setTimeout(() => {
+          iframe.contentWindow.postMessage({ type: 'LOAD_STORY', data: s }, '*');
+        }, 500);
+      };
+    }
+  }
 }
 /* ╚═══ AKHIR [T3] render() ═══╝ */
 
