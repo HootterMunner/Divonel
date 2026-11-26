@@ -368,166 +368,120 @@ body {
   outline-style: solid;
   background: rgba(37, 99, 235, 0.06);
 }
-/* ╔═══ AWAL [T2-Fix] Topbar 2 baris desktop, 1 baris mobile ═══╗ */
-nav {
-  flex-wrap: wrap;
-}
-.nav-row1 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-.nav-row2 {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding-top: 4px;
-  border-top: 1px solid var(--line);
-  margin-top: 4px;
-}
-.nav-menus {
-  display: flex;
-  gap: 4px;
-  margin: 0 8px;
-}
-.nav-seg {
-  display: flex;
-  gap: 4px;
-  flex: 0 0 auto;
-}
-.nav-seg button {
-  flex: 0 0 auto;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  background: var(--bg);
-  color: var(--t2);
-  font-size: 13px;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.nav-seg button.on {
-  background: var(--p);
-  color: #fff;
-  font-weight: 600;
-}
-.nav-viewmenu {
-  display: none;
-}
-.nav-user {
-  margin-left: auto;
-  flex: none;
-}
-.nav-sep {
-  display: inline-block;
-  width: 1px;
-  height: 16px;
-  background: var(--line);
-  margin: 0 4px;
-}
-
-/* Mobile <768px: 1 baris, menu disembunyikan */
-@media (max-width: 767px) {
-  .nav-menus {
-    display: none !important;
-  } /* Sembunyikan menu File, Editor, dll */
-  .nav-seg {
-    display: none !important;
-  } /* Sembunyikan segmented [Main|Peta|Kode] */
-  .nav-viewmenu {
-    display: inline-flex;
-    align-items: center;
-    min-height: 36px;
-    padding: 0 10px;
-    border: 1px solid var(--line);
-    background: var(--card);
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-  }
-  .nav-row2 {
-    display: flex;
-    padding-top: 0;
-    border-top: 0;
-    margin-top: 0;
-  }
-}
-
-/* Desktop ≥768px: 2 baris */
-@media (min-width: 768px) {
-  .nav-row2 {
-    display: flex;
-  }
-  .nav-seg button {
-    min-height: 32px;
-  }
-}
-/* ╚═══ AKHIR [T2-Fix] ═══╝ */
 
 /* ╔═══ AWAL [T3-FINAL] Layout Split View & Mode ═══╗ */
-.split-container {
-  display: flex;
-  height: calc(100vh - var(--nav-h) - 40px);
-  width: 100%;
-  overflow: hidden;
-}
-
-/* Panel Editor (Kiri) */
-.split-editor {
-  flex: 1;
-  min-width: 250px;
-  overflow-y: auto;
-  background: var(--bg);
-}
-
-/* Panel Play (Kanan) */
-.split-play {
-  flex: 1;
-  min-width: 250px;
-  background: #ffffff;
-  border-left: 1px solid var(--line);
-  position: relative;
-}
-
-.split-play iframe {
-  width: 100%; height: 100%; border: 0; display: block;
-}
-
-/* Garis Resizer */
+  .split-container {
+    display: flex;
+    height: calc(100vh - var(--nav-h) - 40px);
+    width: 100%;
+    overflow: hidden;
+  }
+  
+  /* Panel Editor (Kiri) */
+  .split-editor {
+    flex: 1;
+    min-width: 250px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+  
+  /* Panel Play (Kanan) */
+  .split-play {
+    flex: 1;
+    min-width: 250px;
+    background: #ffffff;
+    border-left: 1px solid var(--line);
+    position: relative;
+  }
+  
+  .split-play iframe {
+    width: 100%; height: 100%; border: 0; display: block;
+  }
+  
+  /* Garis Resizer */
 .split-resizer {
-  width: 4px;
+  width: 8px; /* Lebarkan sedikit agar mudah dipegang mouse */
   background: var(--line);
   cursor: col-resize;
   touch-action: none;
+  height: 100%; /* ← INI YANG BIKIN BISA DIGESER */
+  position: relative;
+  z-index: 10;
 }
 
-/* ── ATURAN MODE ── */
-
-/* 1. Mode Editor Only */
-.mode-editor .split-play, 
-.mode-editor .split-resizer { 
-  display: none !important; 
+.split-resizer:hover {
+  background: var(--p);
 }
-
-/* 2. Mode Play Only */
-.mode-play .split-editor, 
-.mode-play .split-resizer { 
-  display: none !important; 
-}
-
-/* 3. Mode Split (Default) */
-.mode-split .split-play { display: block; }
-.mode-split .split-resizer { display: block; }
-
-/* Sembunyikan resizer di HP (karena layarnya sempit) */
-@media(max-width:767px){
-  .mode-split .split-resizer { display: none; }
-  .mode-split .split-play { display: none; } /* Di HP, mode split default ke Editor */
   
-  /* Jika di HP memilih mode Play, tampilkan penuh */
-  .mode-play .split-play { display: block; }
+  /* ── ATURAN MODE ── */
+  
+  /* 1. Mode Editor Only */
+  .mode-editor .split-play, 
+  .mode-editor .split-resizer { 
+    display: none !important; 
+  }
+  
+  /* 2. Mode Play Only */
+  .mode-play .split-editor, 
+  .mode-play .split-resizer { 
+    display: none !important; 
+  }
+  
+  /* 3. Mode Split (Default) */
+  .mode-split .split-play { display: block; }
+  .mode-split .split-resizer { display: block; }
+  
+  /* Sembunyikan resizer di HP (karena layarnya sempit) */
+  @media(max-width:767px){
+    .mode-split .split-resizer { display: none; }
+    .mode-split .split-play { display: none; } /* Di HP, mode split default ke Editor */
+    
+    /* Jika di HP memilih mode Play, tampilkan penuh */
+    .mode-play .split-play { display: block; }
+  }
+  /* ╚═══ AKHIR [T3-FINAL] ═══╝ */
+  /* Sembunyikan mode di baris 1 untuk Desktop */
+  .nav-mobile-only { display: none; }
+  
+  @media (max-width: 767px) {
+    /* Tampilkan sakelar Play/Editor di Mobile */
+    .nav-mobile-only { display: block !important; }
+    
+    /* Sembunyikan tombol 3-mode Desktop saat di Mobile */
+    .nav-row2 .nav-seg { display: none !important; }
+  }
+  /* ╔═══ AWAL [T3.5] Sidebar Minimize (Desktop) ═══╗ */
+@media(min-width: 768px){
+  /* Tampilkan tombol ☰ di desktop */
+  .ed-hamb {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* Sembunyikan sidebar jika class sidebar-closed aktif */
+  .sidebar-closed .ed-side {
+    display: none !important;
+  }
+
+  /* Sesuaikan margin main saat sidebar dilipat */
+  .sidebar-closed .ed-main {
+    margin-left: 0 !important;
+  }
 }
-/* ╚═══ AKHIR [T3-FINAL] ═══╝ */
+/* ╚═══ AKHIR [T3.5] ═══╝ */
+/* Sembunyikan tombol lipat di Mobile (karena di HP pakai drawer) */
+/* ╔═══ AWAL [FIX TOTAL] Pemisahan Total Topbar ═══╗ */
+.nav-mobile { display: none; }
+
+@media (max-width: 767px) {
+  .nav-desktop { display: none !important; }
+  .nav-mobile { display: block !important; }
+}
+
+@media (min-width: 768px) {
+  .nav-desktop { display: block !important; }
+  .nav-mobile { display: none !important; }
+}
+/* ╚═══ AKHIR [FIX TOTAL] ═══╝ */

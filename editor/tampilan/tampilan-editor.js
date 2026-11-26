@@ -28,39 +28,33 @@ function chapterPath(s,cid){
   return path;
 }
 
-function sidebarHTML(s){
-  const node=(cid,level)=>{
-    if(level>20)return '';
-    const c=s.chapters.find(x=>x.id===cid);
-    if(!c)return '';
-    const kids=s.chapters.filter(x=>(x.parent||null)===cid);
-    const active=edPath===cid;
-    const n=s.passages.filter(p=>p.chapter===cid).length;
-    return `<div class="sb-item${active?' on':''}" data-a="edpath" data-id="${c.id}" style="padding-left:${8+level*12}px">`+
-      `<span class="sb-dot"></span><span class="sb-label">${esc(c.title)}</span>${n?`<span class="cnt">${n}</span>`:''}`+
-    `</div>`+
-    kids.map(k=>node(k.id,level+1)).join('');
+function sidebarHTML(s) {
+  const node = (cid, level) => {
+    if (level > 20) return '';
+    const c = s.chapters.find(x => x.id === cid);
+    if (!c) return '';
+    const kids = s.chapters.filter(x => (x.parent || null) === cid);
+    const active = edPath === cid;
+    const n = s.passages.filter(p => p.chapter === cid).length;
+    return `<div class="sb-item${active?' on':''}" data-a="edpath" data-id="${c.id}" style="padding-left:${8+level*12}px">` +
+      `<span class="sb-dot"></span><span class="sb-label">${esc(c.title)}</span>${n?`<span class="cnt">${n}</span>`:''}` +
+      `</div>` +
+      kids.map(k => node(k.id, level + 1)).join('');
   };
-  const roots=s.chapters.filter(c=>(c.parent||null)===null);
-  return `<div class="sb-title" title="${esc(s.title)}">${esc(s.title)}</div>`+
-    `<div class="sb-head">Navigasi</div>`+
-    `<div class="sb-item${edPath===null?' on':''}" data-a="edpath" data-id="">`+
-      `<span class="sb-dot"></span><span class="sb-label">Semua bab</span>`+
-    `</div>`+
-    roots.map(c=>node(c.id,0)).join('')+
-    `<div class="sb-foot"><button class="sm pr" data-a="nc">+ Bab</button></div>`;
-}
-
-function edBreadcrumb(s){
-  if(edPath===null)return `<span class="cur">Semua bab</span>`;
-  const path=chapterPath(s,edPath);
-  let h=`<button data-a="edpath" data-id="">Semua</button>`;
-  path.forEach((c,i)=>{
-    h+=`<span class="sep">/</span>`;
-    if(i<path.length-1)h+=`<button data-a="edpath" data-id="${c.id}">${esc(c.title)}</button>`;
-    else h+=`<span class="cur">${esc(c.title)}</span>`;
-  });
-  return h;
+  
+  const roots = s.chapters.filter(c => (c.parent || null) === null);
+  
+  return `
+  <div class="sb-title" style="padding: 10px 12px; border-bottom: 1px solid var(--line); background: var(--card);">
+    <span style="display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; font-size:13px;" title="${esc(s.title)}">${esc(s.title)}</span>
+  </div>
+`+
+  `<div class="sb-head">Navigasi</div>`+
+  `<div class="sb-item${edPath===null?' on':''}" data-a="edpath" data-id="">`+
+    `<span class="sb-dot"></span><span class="sb-label">Semua bab</span>`+
+  `</div>`+
+  roots.map(c=>node(c.id,0)).join('')+
+  `<div class="sb-foot"><button class="sm pr" data-a="nc">+ Bab</button></div>`;
 }
 
 function folderCard(s,c){
@@ -123,6 +117,17 @@ function edInside(s,cid){
    ║ AWAL — vEd versi Langkah 3a (sidebar + konten)           ║
    ║ Ini MENGGANTIKAN vEd versi 2a. Jangan ada dua vEd.       ║
    ╚══════════════════════════════════════════════════════════╝ */
+   function edBreadcrumb(s){
+  if(edPath===null)return `<span class="cur">Semua bab</span>`;
+  const path=chapterPath(s,edPath);
+  let h=`<button data-a="edpath" data-id="">Semua</button>`;
+  path.forEach((c,i)=>{
+    h+=`<span class="sep">/</span>`;
+    if(i<path.length-1)h+=`<button data-a="edpath" data-id="${c.id}">${esc(c.title)}</button>`;
+    else h+=`<span class="cur">${esc(c.title)}</span>`;
+  });
+  return h;
+}
 function vEd(s){
   if(edPath!==null&&!s.chapters.find(x=>x.id===edPath))edPath=null;
   const body = edPath===null ? edRoot(s) : edInside(s, edPath);

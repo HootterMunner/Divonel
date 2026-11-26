@@ -87,7 +87,7 @@ function bacaUI(){
     const m = bacaLS(KM) || {};
     const u = m.ui || {};
     return {
-      tab:     (u.tab === 'lib' || u.tab === 'doc') ? u.tab : null,
+      diPustaka: (u.diPustaka === true || u.diPustaka === false) ? u.diPustaka : null,
       docView: (u.docView === 'main' || u.docView === 'map' || u.docView === 'kd') ? u.docView : null,
       edPath:  (typeof u.edPath === 'string' || u.edPath === null) ? u.edPath : undefined
     };
@@ -97,7 +97,7 @@ function bacaUI(){
 function simpanUI(){
   try{
     const m = bacaLS(KM) || {};
-    m.ui = { tab: tab, docView: docView, edPath: edPath };
+    m.ui = { diPustaka: diPustaka, docView: docView, edPath: edPath };
     localStorage.setItem(KM, JSON.stringify(m));
   }catch(e){}
 }
@@ -110,15 +110,13 @@ function muatUI(){
       tab = 'lib';
       return;
     }
-    if(u.tab === 'doc'){
-      tab = 'doc';
+ if (u.diPustaka === false) {
+  diPustaka = false;
       if(u.docView) docView = u.docView;
       /* edPath hanya dipakai saat doc; validasi ada di vEd, jadi aman diset mentah. */
       if(u.edPath !== undefined) edPath = u.edPath;
       panduanAktif = false;
-    } else {
-      tab = 'lib';
-    }
+    } else { diPustaka = true; }
   }catch(e){ tab = 'lib'; }
 }
 /* ╚═══ AKHIR [Tahap 5b — persistensi UI] ═══╝ */

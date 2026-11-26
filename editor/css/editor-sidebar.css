@@ -1,21 +1,36 @@
-/* ═══ editor/editor-sidebar.css — sidebar Editor (3a) ═══ */ /* pecahan editor.css */
-/* ╔══════════════════════════════════════════════════════════╗
-   ║ AWAL — CSS sidebar Editor (Langkah 3a)                   ║
-   ║ Tambahkan di akhir editor.css. Tidak menghapus apa pun.  ║
-   ╚══════════════════════════════════════════════════════════╝ */
+/* ═══ editor/editor-sidebar.css — sidebar Editor (3a) ═══ */ 
+/* pecahan editor.css */
+
+/* ── Layout Dasar (Mobile & Desktop) ── */
 .ed-wrap{display:flex;gap:0;margin:0;min-height:60vh}
+
 .ed-side {
   flex: 0 0 240px;
   background: var(--card);
   border-right: 1px solid var(--line);
   overflow-y: auto;
   position: sticky;
-  top: calc(var(--nav-h) + env(safe-area-inset-top, 0px));
-  height: calc(100vh - var(--nav-h) - env(safe-area-inset-top, 0px));
+  /* Di Desktop, top harus memperhitungkan tinggi nav (2 baris) */
+  top: var(--rb-h, 100px);
+  height: calc(100vh - var(--rb-h, 100px));
   align-self: flex-start;
   transition: transform .2s ease;
 }
-.sb-title{font-weight:700;font-size:13px;padding:10px 12px 8px;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--t)}
+
+/* ── Item Sidebar ── */
+.sb-title{
+  display: flex; 
+  align-items: center; 
+  padding: 10px 12px; 
+  border-bottom: 1px solid var(--line); 
+  background: var(--card);
+  font-weight:700; 
+  font-size:13px; 
+  color:var(--t); 
+  overflow:hidden; 
+  text-overflow:ellipsis; 
+  white-space:nowrap;
+}
 .sb-head{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--t2);padding:10px 12px 4px;font-weight:600}
 .sb-item{display:flex;align-items:center;gap:8px;padding:9px 12px;font-size:13px;color:var(--t);cursor:pointer;min-height:38px;user-select:none;border:0;background:none;text-align:left;width:100%}
 .sb-item:hover{background:var(--bg)}
@@ -27,14 +42,17 @@
 .sb-item.on .cnt{background:var(--card);color:var(--p)}
 .sb-foot{padding:8px 8px 12px;border-top:1px solid var(--line);margin-top:6px}
 .sb-foot button{width:100%}
+
+/* ── Area Editor ── */
 .ed-main{flex:1;min-width:0;padding:0 16px}
 .ed-bar{display:flex;align-items:center;gap:8px;margin:8px 0 12px;min-height:36px}
-.ed-hamb{flex:none;width:36px;height:36px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:0;font-size:16px;cursor:pointer;color:var(--t)}
 .crumb{display:flex;flex-wrap:wrap;gap:0;align-items:center;font-size:13px;min-width:0}
 .crumb button{border:0;background:none;padding:4px 6px;border-radius:6px;font-size:13px;color:var(--p);cursor:pointer;height:auto;font-weight:500}
 .crumb button:hover{background:var(--p50)}
 .crumb .sep{color:var(--t2);padding:0 2px;font-size:12px}
 .crumb .cur{color:var(--t);font-weight:600;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Kartu Folder ── */
 .folder-card{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--card);margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
 .folder-card:hover{border-color:var(--p200);background:var(--p50)}
 .folder-card:active{opacity:.8}
@@ -44,8 +62,8 @@
 .folder-card .fc-body p{margin:2px 0 0;font-size:12px;color:var(--t2)}
 .folder-card .fc-arrow{color:var(--t2);font-size:18px;flex:none}
 
+/* ── Media Query Sentuh (Mobile/Tablet) ── */
 @media(pointer:coarse){
-  /* Perbesar teks & tombol di semua area (HP mode desktop maupun mobile) */
   body{font-size:16px}
   h1{font-size:24px}
   h2{font-size:18px}
@@ -62,11 +80,12 @@
   .folder-card .fc-body b{font-size:15px}
   .folder-card .fc-body p{font-size:13px}
 }
-/* ╚══════════════════════════════════════════════════════════╝ */
-/* ← BARU: sidebar drawer di mobile */
+
+/* ══════════════════════════════════════════════════════════
+   MODE MOBILE (Layar < 768px)
+   ══════════════════════════════════════════════════════════ */
 @media(max-width:767px){
   .ed-wrap{ margin:0; }
-
   .ed-side{
     position:fixed;
     top:0; left:0; bottom:0;
@@ -77,14 +96,6 @@
     box-shadow:2px 0 12px rgba(0,0,0,.15);
   }
   .ed-side.open{ transform:translateX(0); }
-
-  .ed-hamb{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-  }
-
-  /* Scrim / overlay gelap */
   .ed-scrim{
     position:fixed;
     inset:0;
@@ -93,47 +104,40 @@
   }
 }
 
-/* ╔═══ AWAL [1.2-fix-GoogleDocs] Sidebar fixed kiri, main digeser ═══╗ */
+/* ══════════════════════════════════════════════════════════
+   MODE DESKTOP (Layar ≥ 768px)
+   ══════════════════════════════════════════════════════════ */
 @media(min-width:768px){
-  .ed-hamb{ display:none; }
   .ed-scrim{ display:none; }
 
-  /* ← BARU: sidebar fixed ke viewport kiri, bukan flex-item */
+  /* Sidebar nempel di kiri, di bawah topbar */
   .ed-side{
-    position:fixed;
-    top:calc(var(--nav-h) + env(safe-area-inset-top,0px));
-    left:0;
-    bottom:0;
-    width:240px;
-    height:auto;
-    z-index:30;
-    border-right:1px solid var(--line);
-    background:var(--card);
-    overflow-y:auto;
-    transition:none;
+    position: fixed;
+    top: var(--rb-h, 100px);
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    height: auto;
+    z-index: 30;
+    border-right: 1px solid var(--line);
+    background: var(--card);
+    overflow-y: auto;
+    transition: none;
   }
 
-  /* ← BARU: main digeser, tidak lagi flex-item */
+  /* Area tulis digeser ke kanan */
   .ed-main{
-    margin-left:240px;
-    max-width:680px;
-    margin-right:auto;
-    padding:0 16px;
+    margin-left: 240px;
+    max-width: 680px;
+    margin-right: auto;
+    padding: 0 16px;
   }
 
-  /* ← BARU: ed-wrap tidak perlu flex lagi di desktop */
   .ed-wrap{
-    display:block;
-    min-height:auto;
+    display: block;
+    min-height: auto;
   }
-}
-/* ╚═══ AKHIR [1.2-fix-GoogleDocs] ═══╝ */
-@media(min-width:768px){
-  .ed-side{ position:fixed!important; flex:none!important; }
-  .ed-main{ margin-left:240px!important; }
-}
-
-/* ← BARU: saat ada sidebar (mode edit), #app full width */
-@media(min-width:768px){
+  
+  /* Pastikan tidak ada margin ganda di #app */
   #app:has(.ed-side){ max-width:none; padding:0; }
 }
